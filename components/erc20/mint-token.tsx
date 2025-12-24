@@ -1,66 +1,72 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TransactionButton } from "@/components/dapp/transaction-button"
-import { useActiveAccount } from "thirdweb/react"
-import { client } from "@/lib/thirdweb"
-import { getContract, prepareContractCall, sendTransaction } from "thirdweb"
-import { getActiveChain } from "@/lib/chains"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TransactionButton } from "@/components/dapp/transaction-button";
+import { useActiveAccount } from "thirdweb/react";
+import { client } from "@/lib/thirdweb";
+import {
+  getContract,
+  prepareContractCall,
+  sendAndConfirmTransaction,
+} from "thirdweb";
+import { getActiveChain } from "@/lib/chains";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { claimTo } from "thirdweb/extensions/erc20";
 
 interface MintForm {
-  amount: string
+  amount: string;
 }
 
 interface MintTokenProps {
-  contractAddress: string
+  contractAddress: string;
 }
 
 export function MintToken({ contractAddress }: MintTokenProps) {
-  const account = useActiveAccount()
+  const account = useActiveAccount();
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<MintForm>()
-  const [error, setError] = useState<string | null>(null)
+  } = useForm<MintForm>();
+  const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: MintForm) => {
     if (!account) {
-      setError("Wallet not connected")
-      return
+      setError("Wallet not connected");
+      return;
     }
 
     try {
-      setError(null)
-      const activeChain = getActiveChain()
+      setError(null);
+      const activeChain = getActiveChain();
       const contract = getContract({
         client,
         address: contractAddress,
         chain: activeChain,
-      })
+      });
 
-      const amount = BigInt(data.amount) * BigInt(10 ** 18)
+      const amount = BigInt(data.amount) * BigInt(10 ** 18);
 
-      const transaction = prepareContractCall({
+      const transaction = claimTo({
         contract,
-        method: "function mint(uint256 amount) returns (bool)",
-        params: [amount],
-      })
+        to: account.address,
+        quantity: data.amount,
+      });
 
-      await sendTransaction({
+      await sendAndConfirmTransaction({
         transaction,
         account,
-      })
+      });
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mint failed")
-      throw err
+      setError(err instanceof Error ? err.message : "Mint failed");
+      throw err;
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -86,7 +92,9 @@ export function MintToken({ contractAddress }: MintTokenProps) {
             },
           })}
         />
-        {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
+        {errors.amount && (
+          <p className="text-xs text-destructive">{errors.amount.message}</p>
+        )}
       </div>
 
       <TransactionButton
@@ -98,5 +106,5 @@ export function MintToken({ contractAddress }: MintTokenProps) {
         Mint Tokens
       </TransactionButton>
     </form>
-  )
+  );
 }

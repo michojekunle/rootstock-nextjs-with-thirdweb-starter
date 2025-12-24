@@ -1,32 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TransactionButton } from "@/components/dapp/transaction-button"
-import { useActiveAccount } from "thirdweb/react"
-import { client } from "@/lib/thirdweb"
-import { getContract, prepareContractCall, sendTransaction } from "thirdweb"
-import { getActiveChain } from "@/lib/chains"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TransactionButton } from "@/components/dapp/transaction-button";
+import { useActiveAccount } from "thirdweb/react";
+import { client } from "@/lib/thirdweb";
+import {
+  getContract,
+  prepareContractCall,
+  sendAndConfirmTransaction,
+} from "thirdweb";
+import { getActiveChain } from "@/lib/chains";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CreateListingForm {
-  assetContract: string
-  tokenId: string
-  quantity: string
-  pricePerToken: string
-  currency: string
+  assetContract: string;
+  tokenId: string;
+  quantity: string;
+  pricePerToken: string;
+  currency: string;
 }
 
 interface CreateListingProps {
-  contractAddress: string
-  sellerAddress: string
+  contractAddress: string;
+  sellerAddress: string;
 }
 
-export function CreateListing({ contractAddress, sellerAddress }: CreateListingProps) {
-  const account = useActiveAccount()
+export function CreateListing({
+  contractAddress,
+  sellerAddress,
+}: CreateListingProps) {
+  const account = useActiveAccount();
   const {
     register,
     handleSubmit,
@@ -37,56 +44,56 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
       quantity: "1",
       currency: "0x0000000000000000000000000000000000000000",
     },
-  })
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: CreateListingForm) => {
     if (!account) {
-      setError("Wallet not connected")
-      return
+      setError("Wallet not connected");
+      return;
     }
 
     try {
-      setError(null)
-      const activeChain = getActiveChain()
+      setError(null);
+      const activeChain = getActiveChain();
       const contract = getContract({
         client,
         address: contractAddress,
         chain: activeChain,
-      })
+      });
 
-      const now = Math.floor(Date.now() / 1000)
-      const endTime = now + 86400 * 7 // 7 days from now
+      const now = Math.floor(Date.now() / 1000);
+      const endTime = now + 86400 * 7; // 7 days from now
 
+      const _params = {
+        assetContract: data.assetContract,
+        tokenId: BigInt(data.tokenId),
+        quantity: BigInt(data.quantity),
+        currency: data.currency,
+        pricePerToken: BigInt(data.pricePerToken),
+        startTimestamp: BigInt(now),
+        endTimestamp: BigInt(endTime),
+        reserved: false,
+      };
+      
       const transaction = prepareContractCall({
         contract,
         method:
-          "function createListing(tuple(address assetContract, uint256 tokenId, uint256 quantity, address currency, uint256 pricePerToken, uint128 startTime, uint128 endTime, bool reserved) listing)",
-        params: [
-          [
-            data.assetContract,
-            BigInt(data.tokenId),
-            BigInt(data.quantity),
-            data.currency,
-            BigInt(data.pricePerToken),
-            BigInt(now),
-            BigInt(endTime),
-            false,
-          ],
-        ],
-      })
+          "function createListing((address assetContract, uint256 tokenId, uint256 quantity, address currency, uint256 pricePerToken, uint128 startTimestamp, uint128 endTimestamp, bool reserved) _params) returns (uint256 listingId)",
+        params: [_params],
+      });
 
-      await sendTransaction({
+      await sendAndConfirmTransaction({
         transaction,
         account,
-      })
+      });
 
-      reset()
+      reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create listing")
-      throw err
+      setError(err instanceof Error ? err.message : "Failed to create listing");
+      throw err;
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -110,7 +117,11 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
             },
           })}
         />
-        {errors.assetContract && <p className="text-xs text-destructive">{errors.assetContract.message}</p>}
+        {errors.assetContract && (
+          <p className="text-xs text-destructive">
+            {errors.assetContract.message}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -128,7 +139,9 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
               },
             })}
           />
-          {errors.tokenId && <p className="text-xs text-destructive">{errors.tokenId.message}</p>}
+          {errors.tokenId && (
+            <p className="text-xs text-destructive">{errors.tokenId.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -145,12 +158,18 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
               },
             })}
           />
-          {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+          {errors.quantity && (
+            <p className="text-xs text-destructive">
+              {errors.quantity.message}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="pricePerToken">Price Per Token (in smallest unit)</Label>
+        <Label htmlFor="pricePerToken">
+          Price Per Token (in smallest unit)
+        </Label>
         <Input
           id="pricePerToken"
           type="number"
@@ -163,13 +182,25 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
             },
           })}
         />
-        {errors.pricePerToken && <p className="text-xs text-destructive">{errors.pricePerToken.message}</p>}
+        {errors.pricePerToken && (
+          <p className="text-xs text-destructive">
+            {errors.pricePerToken.message}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="currency">Currency Address (leave blank for RBTC)</Label>
-        <Input id="currency" placeholder="0x0000000000000000000000000000000000000000" {...register("currency")} />
-        <p className="text-xs text-muted-foreground">Use 0x0000... for native token (RBTC)</p>
+        <Label htmlFor="currency">
+          Currency Address (leave blank for RBTC)
+        </Label>
+        <Input
+          id="currency"
+          placeholder="0x0000000000000000000000000000000000000000"
+          {...register("currency")}
+        />
+        <p className="text-xs text-muted-foreground">
+          Use 0x0000... for native token (RBTC)
+        </p>
       </div>
 
       <TransactionButton
@@ -181,5 +212,5 @@ export function CreateListing({ contractAddress, sellerAddress }: CreateListingP
         Create Listing
       </TransactionButton>
     </form>
-  )
+  );
 }

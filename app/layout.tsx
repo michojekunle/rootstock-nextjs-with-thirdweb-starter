@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { ThirdwebProvider } from "@/components/providers/thirdweb-provider"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -52,7 +51,6 @@ export default function RootLayout({
             </SidebarInset>
           </SidebarProvider>
         </ThirdwebProvider>
-        <Analytics />
       </body>
     </html>
   )

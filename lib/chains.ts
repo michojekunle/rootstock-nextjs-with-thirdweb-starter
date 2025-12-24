@@ -1,4 +1,4 @@
-import { defineChain } from "thirdweb"
+import { defineChain } from "thirdweb";
 
 /**
  * Rootstock Mainnet Configuration
@@ -21,8 +21,7 @@ export const rootstockMainnet = defineChain({
     },
   ],
   rpc: "https://public-node.rsk.co",
-  testnet: false,
-})
+});
 
 /**
  * Rootstock Testnet Configuration
@@ -46,17 +45,17 @@ export const rootstockTestnet = defineChain({
   ],
   rpc: "https://public-node.testnet.rsk.co",
   testnet: true,
-})
+});
 
 /**
  * Get the active chain based on environment variable
  */
 export const getActiveChain = () => {
-  const network = process.env.NEXT_PUBLIC_DEFAULT_NETWORK || "testnet"
-  return network === "mainnet" ? rootstockMainnet : rootstockTestnet
-}
+  const network = process.env.NEXT_PUBLIC_DEFAULT_NETWORK || "testnet";
+  return network === "mainnet" ? rootstockMainnet : rootstockTestnet;
+};
 
 /**
  * Get all supported chains
  */
-export const supportedChains = [rootstockMainnet, rootstockTestnet]
+export const supportedChains = [rootstockMainnet, rootstockTestnet];

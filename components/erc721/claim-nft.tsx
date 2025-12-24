@@ -1,28 +1,32 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TransactionButton } from "@/components/dapp/transaction-button"
-import { useActiveAccount } from "thirdweb/react"
-import { client } from "@/lib/thirdweb"
-import { getContract, prepareContractCall, sendTransaction } from "thirdweb"
-import { getActiveChain } from "@/lib/chains"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TransactionButton } from "@/components/dapp/transaction-button";
+import { useActiveAccount } from "thirdweb/react";
+import { client } from "@/lib/thirdweb";
+import {
+  getContract,
+  prepareContractCall,
+  sendAndConfirmTransaction,
+} from "thirdweb";
+import { getActiveChain } from "@/lib/chains";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ClaimForm {
-  quantity: string
+  quantity: string;
 }
 
 interface ClaimNFTProps {
-  contractAddress: string
-  userAddress: string
+  contractAddress: string;
+  userAddress: string;
 }
 
 export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
-  const account = useActiveAccount()
+  const account = useActiveAccount();
   const {
     register,
     handleSubmit,
@@ -30,25 +34,25 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
     reset,
   } = useForm<ClaimForm>({
     defaultValues: { quantity: "1" },
-  })
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: ClaimForm) => {
     if (!account) {
-      setError("Wallet not connected")
-      return
+      setError("Wallet not connected");
+      return;
     }
 
     try {
-      setError(null)
-      const activeChain = getActiveChain()
+      setError(null);
+      const activeChain = getActiveChain();
       const contract = getContract({
         client,
         address: contractAddress,
         chain: activeChain,
-      })
+      });
 
-      const quantity = BigInt(data.quantity)
+      const quantity = BigInt(data.quantity);
 
       const transaction = prepareContractCall({
         contract,
@@ -61,19 +65,19 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
           BigInt(0),
           [[], "0x" + "0".repeat(64), "0x"],
         ],
-      })
+      });
 
-      await sendTransaction({
+      await sendAndConfirmTransaction({
         transaction,
         account,
-      })
+      });
 
-      reset()
+      reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Claim failed")
-      throw err
+      setError(err instanceof Error ? err.message : "Claim failed");
+      throw err;
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -103,7 +107,9 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
             },
           })}
         />
-        {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+        {errors.quantity && (
+          <p className="text-xs text-destructive">{errors.quantity.message}</p>
+        )}
       </div>
 
       <TransactionButton
@@ -115,5 +121,5 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
         Claim NFT
       </TransactionButton>
     </form>
-  )
+  );
 }
