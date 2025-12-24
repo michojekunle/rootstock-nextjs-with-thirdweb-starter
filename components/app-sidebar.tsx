@@ -1,8 +1,16 @@
-"use client"
+"use client";
 
-import { LayoutDashboard, Coins, ImageIcon, ShoppingCart, Settings, ChevronUp, User2 } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import {
+  LayoutDashboard,
+  Coins,
+  ImageIcon,
+  ShoppingCart,
+  Settings,
+  ChevronUp,
+  User2,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -15,10 +23,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-} from "@/components/ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useActiveAccount } from "thirdweb/react"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useActiveAccount } from "thirdweb/react";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   {
@@ -36,16 +49,11 @@ const navigation = [
     icon: ImageIcon,
     href: "/erc721",
   },
-  {
-    title: "Marketplace",
-    icon: ShoppingCart,
-    href: "/marketplace",
-  },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const account = useActiveAccount()
+  const pathname = usePathname();
+  const account = useActiveAccount();
 
   return (
     <Sidebar>
@@ -55,8 +63,12 @@ export function AppSidebar() {
             <span className="text-lg font-bold text-primary-foreground">R</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">Rootstock dApp</span>
-            <span className="text-xs text-sidebar-foreground/60">Thirdweb SDK v5</span>
+            <span className="text-sm font-semibold text-sidebar-foreground">
+              Rootstock dApp
+            </span>
+            <span className="text-xs text-sidebar-foreground/60">
+              Thirdweb SDK v5
+            </span>
           </div>
         </div>
       </SidebarHeader>
@@ -67,7 +79,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href;
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive}>
@@ -77,26 +89,8 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
+                );
               })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/settings">
-                    <Settings className="size-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -106,7 +100,10 @@ export function AppSidebar() {
         {account ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-2 px-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 px-2"
+              >
                 <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
                   <User2 className="size-4 text-primary" />
                 </div>
@@ -114,7 +111,9 @@ export function AppSidebar() {
                   <span className="text-sm font-medium">
                     {account.address.slice(0, 6)}...{account.address.slice(-4)}
                   </span>
-                  <span className="text-xs text-muted-foreground">Connected</span>
+                  <span className="text-xs text-muted-foreground">
+                    Connected
+                  </span>
                 </div>
                 <ChevronUp className="size-4 opacity-50" />
               </Button>
@@ -122,18 +121,22 @@ export function AppSidebar() {
             <DropdownMenuContent side="top" align="end" className="w-56">
               <DropdownMenuItem
                 onClick={() => {
-                  navigator.clipboard.writeText(account.address)
+                  navigator.clipboard.writeText(account.address);
                 }}
               >
                 Copy Address
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.reload()}>Disconnect</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.reload()}>
+                Disconnect
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="px-2 py-3 text-center text-sm text-muted-foreground">Wallet not connected</div>
+          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+            Wallet not connected
+          </div>
         )}
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
