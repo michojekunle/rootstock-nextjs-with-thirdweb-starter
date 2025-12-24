@@ -88,19 +88,19 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
-        <CardContent className="pt-6 space-y-2">
+        <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">Collection Name</p>
           <p className="text-lg font-semibold">{dropData.name}</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="pt-6 space-y-2">
+        <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">Symbol</p>
           <p className="text-lg font-semibold">{dropData.symbol}</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="pt-6 space-y-2">
+        <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">Total Minted</p>
           <p className="text-lg font-semibold">{dropData.totalSupply}</p>
         </CardContent>

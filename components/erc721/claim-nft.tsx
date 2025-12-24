@@ -15,6 +15,7 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { claimTo } from "thirdweb/extensions/erc20";
 
 interface ClaimForm {
   quantity: string;
@@ -52,18 +53,26 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
         chain: activeChain,
       });
 
-      const quantity = BigInt(data.quantity);
+      const quantity = BigInt(1);
 
       const transaction = prepareContractCall({
         contract,
         method:
-          "function claim(address receiver, uint256 quantity, address currency, uint256 pricePerToken, (bytes32[], bytes32, bytes) proofAndQuantity) payable",
+          "function claim(address _receiver, uint256 _quantity, address _currency, uint256 _pricePerToken, (bytes32[] proof, uint256 quantityLimitPerWallet, uint256 pricePerToken, address currency) _allowlistProof, bytes _data) payable",
         params: [
           userAddress,
           quantity,
-          "0x0000000000000000000000000000000000000000",
+          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
           BigInt(0),
-          [[], "0x" + "0".repeat(64), "0x"],
+          {
+            proof: [],
+            quantityLimitPerWallet: BigInt(
+              "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            ),
+            pricePerToken: BigInt(0),
+            currency: "0x0000000000000000000000000000000000000000",
+          },
+          "0x",
         ],
       });
 

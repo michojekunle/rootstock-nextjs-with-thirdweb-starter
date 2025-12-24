@@ -43,7 +43,8 @@ export function ChainSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2 bg-transparent">
-          <span className="truncate">{currentChainName}</span>
+          <span className="hidden md:block truncate">{currentChainName}</span>
+          <span className="md:hidden block truncate">{currentChainName.split(" ")[1]}</span>
           <ChevronDown className="size-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>

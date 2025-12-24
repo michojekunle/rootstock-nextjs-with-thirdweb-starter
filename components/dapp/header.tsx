@@ -16,7 +16,7 @@ export function Header() {
 
       <div className="flex flex-1 items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold">Rootstock dApp Starter</h1>
+          <h1 className="text-lg hidden md:block font-semibold">Rootstock dApp Starter</h1>
         </div>
 
         <div className="flex items-center gap-2">

@@ -47,27 +47,24 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         })
 
         const balanceNum = Number(balance)
+        alert(balanceNum);
         const userNFTs: NFT[] = []
 
         for (let i = 0; i < Math.min(balanceNum, 10); i++) {
+          console.log("tryingggggggggggggggggg")
           try {
-            const tokenId = await readContract({
-              contract,
-              method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-              params: [userAddress, BigInt(i)],
-            })
-
             const uri = await readContract({
               contract,
               method: "function tokenURI(uint256 tokenId) view returns (string)",
-              params: [tokenId],
+              params: [BigInt(i)],
             })
 
             userNFTs.push({
-              tokenId: String(tokenId),
+              tokenId: String(BigInt(i)),
               uri: String(uri),
             })
-          } catch {
+          } catch(err) {
+            console.error(err);
             // Skip NFTs that fail to load
           }
         }
