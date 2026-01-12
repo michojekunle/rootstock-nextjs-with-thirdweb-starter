@@ -30,7 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useActiveWallet, useDisconnect } from "thirdweb/react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
@@ -54,10 +54,13 @@ const navigation = [
 export function AppSidebar() {
   const pathname = usePathname();
   const account = useActiveAccount();
+  const wallet = useActiveWallet();
+  const { disconnect } = useDisconnect();
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
+        {/* ... header content ... */}
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-lg bg-primary">
             <span className="text-lg font-bold text-primary-foreground">R</span>
@@ -126,7 +129,11 @@ export function AppSidebar() {
               >
                 Copy Address
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.reload()}>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (wallet) disconnect(wallet);
+                }}
+              >
                 Disconnect
               </DropdownMenuItem>
             </DropdownMenuContent>

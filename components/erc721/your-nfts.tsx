@@ -47,24 +47,28 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         })
 
         const balanceNum = Number(balance)
-        alert(balanceNum);
         const userNFTs: NFT[] = []
 
-        for (let i = 0; i < Math.min(balanceNum, 10); i++) {
-          console.log("tryingggggggggggggggggg")
+        for (let i = 0; i < balanceNum; i++) {
           try {
+            const tokenId = await readContract({
+              contract,
+              method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+              params: [userAddress, BigInt(i)],
+            })
+
             const uri = await readContract({
               contract,
               method: "function tokenURI(uint256 tokenId) view returns (string)",
-              params: [BigInt(i)],
+              params: [tokenId],
             })
 
             userNFTs.push({
-              tokenId: String(BigInt(i)),
+              tokenId: String(tokenId),
               uri: String(uri),
             })
-          } catch(err) {
-            console.error(err);
+          } catch (err) {
+            console.error(err)
             // Skip NFTs that fail to load
           }
         }
@@ -77,7 +81,9 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
       }
     }
 
-    fetchNFTs()
+    if (contractAddress && userAddress) {
+      fetchNFTs()
+    }
   }, [contractAddress, userAddress])
 
   if (loading) return <LoadingCard />

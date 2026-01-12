@@ -29,13 +29,6 @@ const features = [
     href: "/erc721",
     color: "text-chart-2",
   },
-  {
-    title: "Marketplace",
-    description: "Buy, sell, and trade assets with direct listings and offers",
-    icon: ShoppingCart,
-    href: "/marketplace",
-    color: "text-chart-4",
-  },
 ];
 
 export default function DashboardPage() {
@@ -49,7 +42,7 @@ export default function DashboardPage() {
         </h1>
         <p className="text-pretty text-muted-foreground">
           A production-ready dApp starter kit powered by Thirdweb SDK v5 and
-          Next.js 15
+          Next.js 16
         </p>
       </div>
 

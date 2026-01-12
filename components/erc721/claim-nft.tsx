@@ -15,7 +15,7 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { claimTo } from "thirdweb/extensions/erc20";
+
 
 interface ClaimForm {
   quantity: string;

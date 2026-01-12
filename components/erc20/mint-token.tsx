@@ -9,7 +9,6 @@ import { useActiveAccount } from "thirdweb/react";
 import { client } from "@/lib/thirdweb";
 import {
   getContract,
-  prepareContractCall,
   sendAndConfirmTransaction,
 } from "thirdweb";
 import { getActiveChain } from "@/lib/chains";

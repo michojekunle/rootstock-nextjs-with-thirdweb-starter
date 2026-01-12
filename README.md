@@ -1,10 +1,10 @@
 # Rootstock Nextjs Thirdweb dApp Starter Kit
 
-A production-ready Next.js 15 dApp starter kit for building decentralized applications on the Rootstock blockchain using Thirdweb SDK v5.
+A production-ready Next.js 16 dApp starter kit for building decentralized applications on the Rootstock blockchain using Thirdweb SDK v5.
 
 ## Features
 
-- **Next.js 15 with App Router** - Latest Next.js with server components and optimized performance
+- **Next.js 16 with App Router** - Latest Next.js with server components and optimized performance
 - **Rootstock Network Support** - Pre-configured for both mainnet (chain ID 30) and testnet (chain ID 31)
 - **Thirdweb SDK v5** - Complete integration with latest Thirdweb SDK for smart contract interactions
 - **ERC20 Token Interface** - Mint, transfer, and manage tokens
@@ -111,7 +111,7 @@ A production-ready Next.js 15 dApp starter kit for building decentralized applic
    - Copy the deployed contract address to `.env.local`
 
 2. **NFT Drop (ERC721):**
-   - Follow this [prebuilt contract](https://thirdweb.com/thirdweb.eth/DropERC721) and click 'Deply Now'
+   - Follow this [prebuilt contract](https://thirdweb.com/thirdweb.eth/DropERC721) and click 'Deploy Now'
    - Configure collection name and symbol
    - Set base URI for metadata
    - Deploy and add the deployed address to `.env.local`
