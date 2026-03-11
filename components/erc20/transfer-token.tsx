@@ -5,11 +5,12 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TransactionButton } from "@/components/dapp/transaction-button";
-import { useActiveAccount, useActiveWalletChain } from "thirdweb/react";
+import { useActiveAccount } from "thirdweb/react";
 import { client } from "@/lib/thirdweb";
 import {
   getContract,
   prepareContractCall,
+  readContract,
   sendAndConfirmTransaction,
 } from "thirdweb";
 import { getActiveChain } from "@/lib/chains";
@@ -27,16 +28,16 @@ interface TransferTokenProps {
 
 export function TransferToken({ contractAddress }: TransferTokenProps) {
   const account = useActiveAccount();
-  const chain = useActiveWalletChain();
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<TransferForm>();
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: TransferForm) => {
-    if (!account || !chain) {
+    if (!account) {
       setError("Wallet not connected");
       return;
     }
@@ -50,7 +51,16 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
         chain: activeChain,
       });
 
-      const amount = BigInt(data.amount) * BigInt(10 ** 18);
+      const decimals = await readContract({
+        contract,
+        method: "function decimals() view returns (uint8)",
+        params: [],
+      });
+
+      const decimalCount = Number(decimals);
+      const [intPart, fracPart = ""] = data.amount.split(".");
+      const paddedFrac = fracPart.padEnd(decimalCount, "0").slice(0, decimalCount);
+      const amount = BigInt(intPart) * BigInt(10 ** decimalCount) + BigInt(paddedFrac || "0");
 
       const transaction = prepareContractCall({
         contract,
@@ -62,9 +72,10 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
         transaction,
         account,
       });
+
+      reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transfer failed");
-      throw err;
     }
   };
 
@@ -107,6 +118,10 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
             min: {
               value: 0.1,
               message: "Amount must be greater than 0",
+            },
+            max: {
+              value: 1_000_000_000,
+              message: "Amount cannot exceed 1,000,000,000",
             },
           })}
         />

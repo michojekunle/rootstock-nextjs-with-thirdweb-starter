@@ -17,6 +17,15 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 
+/** Native/gas token placeholder used by Thirdweb's claim conditions (EIP-7528) */
+const NATIVE_TOKEN_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+/** uint256 max — signals "no per-wallet quantity limit" in the allowlist proof */
+const UINT256_MAX = BigInt(
+  "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+);
+/** Zero address used as the currency placeholder when price is 0 */
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 interface ClaimForm {
   quantity: string;
 }
@@ -53,7 +62,7 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
         chain: activeChain,
       });
 
-      const quantity = BigInt(1);
+      const quantity = BigInt(data.quantity);
 
       const transaction = prepareContractCall({
         contract,
@@ -62,15 +71,13 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
         params: [
           userAddress,
           quantity,
-          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          NATIVE_TOKEN_ADDRESS,
           BigInt(0),
           {
             proof: [],
-            quantityLimitPerWallet: BigInt(
-              "115792089237316195423570985008687907853269984665640564039457584007913129639935"
-            ),
+            quantityLimitPerWallet: UINT256_MAX,
             pricePerToken: BigInt(0),
-            currency: "0x0000000000000000000000000000000000000000",
+            currency: ZERO_ADDRESS,
           },
           "0x",
         ],
@@ -84,7 +91,6 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
       reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Claim failed");
-      throw err;
     }
   };
 

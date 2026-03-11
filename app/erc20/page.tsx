@@ -1,21 +1,26 @@
 "use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useActiveAccount, useActiveWalletChain } from "thirdweb/react"
+import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react"
 import { Coins, AlertCircle } from "lucide-react"
 import { MintToken } from "@/components/erc20/mint-token"
 import { TransferToken } from "@/components/erc20/transfer-token"
+import { ApproveToken } from "@/components/erc20/approve-token"
 import { TokenBalance } from "@/components/erc20/token-balance"
 import { TokenInfo } from "@/components/erc20/token-info"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { CONTRACT_ADDRESSES } from "@/lib/contracts"
 import { getActiveChain } from "@/lib/chains"
+
+/** The Rootstock chain expected by this dApp (set via NEXT_PUBLIC_DEFAULT_NETWORK env var) */
+const configuredChain = getActiveChain()
 
 export default function ERC20Page() {
   const account = useActiveAccount()
   const chain = useActiveWalletChain()
-  const activeChain = getActiveChain()
-  const isCorrectChain = chain?.id === activeChain.id
+  const switchChain = useSwitchActiveWalletChain()
+  const isCorrectChain = chain?.id === configuredChain.id
 
   if (!account) {
     return (
@@ -41,7 +46,17 @@ export default function ERC20Page() {
         </div>
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
-          <AlertDescription>Please switch to the correct network to interact with ERC20 tokens.</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>Please switch to {configuredChain.name} to interact with ERC20 tokens.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-fit bg-transparent"
+              onClick={() => switchChain(configuredChain)}
+            >
+              Switch to {configuredChain.name}
+            </Button>
+          </AlertDescription>
         </Alert>
       </div>
     )
@@ -86,9 +101,10 @@ export default function ERC20Page() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="transfer" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="transfer">Transfer</TabsTrigger>
               <TabsTrigger value="mint">Mint</TabsTrigger>
+              <TabsTrigger value="approve">Approve</TabsTrigger>
             </TabsList>
 
             <TabsContent value="transfer" className="space-y-4">
@@ -97,6 +113,10 @@ export default function ERC20Page() {
 
             <TabsContent value="mint" className="space-y-4">
               <MintToken contractAddress={CONTRACT_ADDRESSES.ERC20} />
+            </TabsContent>
+
+            <TabsContent value="approve" className="space-y-4">
+              <ApproveToken contractAddress={CONTRACT_ADDRESSES.ERC20} />
             </TabsContent>
           </Tabs>
         </CardContent>

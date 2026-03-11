@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button"
 export function ContractStatus() {
   const hasERC20 = !!CONTRACT_ADDRESSES.ERC20
   const hasNFT = !!CONTRACT_ADDRESSES.NFT_DROP
-  const hasMarketplace = !!CONTRACT_ADDRESSES.MARKETPLACE
-  const allConfigured = hasERC20 && hasNFT && hasMarketplace
+  const allConfigured = hasERC20 && hasNFT
 
   if (allConfigured) {
     return (

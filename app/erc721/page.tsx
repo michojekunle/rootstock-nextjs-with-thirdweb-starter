@@ -1,20 +1,24 @@
 "use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useActiveAccount, useActiveWalletChain } from "thirdweb/react"
+import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react"
 import { ImageIcon, AlertCircle } from "lucide-react"
 import { NFTDropInfo } from "@/components/erc721/nft-drop-info"
 import { ClaimNFT } from "@/components/erc721/claim-nft"
 import { YourNFTs } from "@/components/erc721/your-nfts"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { CONTRACT_ADDRESSES } from "@/lib/contracts"
 import { getActiveChain } from "@/lib/chains"
+
+/** The Rootstock chain expected by this dApp (set via NEXT_PUBLIC_DEFAULT_NETWORK env var) */
+const configuredChain = getActiveChain()
 
 export default function ERC721Page() {
   const account = useActiveAccount()
   const chain = useActiveWalletChain()
-  const activeChain = getActiveChain()
-  const isCorrectChain = chain?.id === activeChain.id
+  const switchChain = useSwitchActiveWalletChain()
+  const isCorrectChain = chain?.id === configuredChain.id
 
   if (!account) {
     return (
@@ -40,7 +44,17 @@ export default function ERC721Page() {
         </div>
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
-          <AlertDescription>Please switch to the correct network to interact with NFTs.</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>Please switch to {configuredChain.name} to interact with NFTs.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-fit bg-transparent"
+              onClick={() => switchChain(configuredChain)}
+            >
+              Switch to {configuredChain.name}
+            </Button>
+          </AlertDescription>
         </Alert>
       </div>
     )

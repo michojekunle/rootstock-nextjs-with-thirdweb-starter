@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/dapp/error-state"
 import { client } from "@/lib/thirdweb"
 import { getContract, readContract } from "thirdweb"
 import { getActiveChain } from "@/lib/chains"
+import { getCached, setCached, getTokenDataCacheKey } from "@/lib/cache"
 import { Info } from "lucide-react"
 
 interface TokenInfoProps {
@@ -26,17 +27,29 @@ export function TokenInfo({ contractAddress }: TokenInfoProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetchTokenInfo = async () => {
       try {
-        setLoading(true)
         const chain = getActiveChain()
+        const cacheKey = getTokenDataCacheKey(contractAddress, chain.id)
+
+        // Check cache first
+        const cached = getCached<TokenData>(cacheKey)
+        if (cached && !cancelled) {
+          setTokenData(cached)
+          setLoading(false)
+          return
+        }
+
+        setLoading(true)
         const contract = getContract({
           client,
           address: contractAddress,
           chain,
         })
 
-        const [name, symbol, decimals] = await Promise.all([
+        const [name, symbol, decimals, totalSupply] = await Promise.all([
           readContract({
             contract,
             method: "function name() view returns (string)",
@@ -52,28 +65,37 @@ export function TokenInfo({ contractAddress }: TokenInfoProps) {
             method: "function decimals() view returns (uint8)",
             params: [],
           }),
+          readContract({
+            contract,
+            method: "function totalSupply() view returns (uint256)",
+            params: [],
+          }),
         ])
 
-        const totalSupply = await readContract({
-          contract,
-          method: "function totalSupply() view returns (uint256)",
-          params: [],
-        })
-
-        setTokenData({
+        const data: TokenData = {
           name: String(name),
           symbol: String(symbol),
           decimals: Number(decimals),
           totalSupply: String(totalSupply),
-        })
+        }
+
+        if (!cancelled) {
+          setTokenData(data)
+          // Cache the token info for 5 minutes
+          setCached(cacheKey, data)
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch token info")
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch token info")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchTokenInfo()
+
+    return () => {
+      cancelled = true
+    }
   }, [contractAddress])
 
   if (loading) return <LoadingCard />
@@ -110,7 +132,10 @@ export function TokenInfo({ contractAddress }: TokenInfoProps) {
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Total Supply</p>
           <p className="text-lg font-semibold truncate">
-            {(BigInt(tokenData.totalSupply) / BigInt(10 ** tokenData.decimals)).toString()}
+            {(Number(BigInt(tokenData.totalSupply)) / 10 ** tokenData.decimals).toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 6,
+            })}
           </p>
         </div>
       </CardContent>

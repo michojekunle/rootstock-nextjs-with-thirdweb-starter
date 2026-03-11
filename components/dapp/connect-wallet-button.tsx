@@ -4,6 +4,7 @@ import { ConnectButton } from "thirdweb/react"
 import { client } from "@/lib/thirdweb"
 import { rootstockMainnet, rootstockTestnet } from "@/lib/chains"
 import { createWallet } from "thirdweb/wallets"
+import { useTheme } from "next-themes"
 
 // Supported wallets for Rootstock
 const wallets = [
@@ -15,6 +16,8 @@ const wallets = [
 ]
 
 export function ConnectWalletButton() {
+  const { resolvedTheme } = useTheme()
+
   return (
     <ConnectButton
       client={client}
@@ -31,7 +34,7 @@ export function ConnectWalletButton() {
         showThirdwebBranding: false,
         size: "compact",
       }}
-      theme="dark"
+      theme={resolvedTheme === "light" ? "light" : "dark"}
     />
   )
 }

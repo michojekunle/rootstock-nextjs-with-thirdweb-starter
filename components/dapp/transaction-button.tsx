@@ -36,7 +36,9 @@ export function TransactionButton({
       setStatus("success")
       setTimeout(() => setStatus("idle"), 2000)
     } catch (error) {
-      console.error("Transaction error:", error)
+      if (process.env.NODE_ENV === "development") {
+        console.error("Transaction error:", error)
+      }
       setStatus("error")
       setTimeout(() => setStatus("idle"), 3000)
     }

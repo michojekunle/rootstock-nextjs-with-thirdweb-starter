@@ -136,6 +136,87 @@ A production-ready Next.js 16 dApp starter kit for building decentralized applic
 - **Explorer:** https://rootstock-testnet.blockscout.com
 
 
+## Development Workflow
+
+### Testnet vs Mainnet Deployment
+
+**Development (Testnet):**
+```env
+NEXT_PUBLIC_DEFAULT_NETWORK=rootstock-testnet
+# Testnet faucet: https://faucet.rootstock.io
+```
+
+**Production (Mainnet):**
+```env
+NEXT_PUBLIC_DEFAULT_NETWORK=rootstock-mainnet
+# Requires real RBTC for gas and operations
+```
+
+### Step-by-Step Deployment Guide
+
+#### 1. Create Smart Contracts
+
+Using Thirdweb Dashboard:
+- Go to https://thirdweb.com/dashboard
+- Click "Deploy Contract"
+- Select ERC20 or ERC721 template
+- Configure your contract:
+  - **ERC20:** Set name, symbol, decimals, initial supply
+  - **ERC721:** Set name, symbol, base metadata URI
+- Select **Rootstock Testnet** as the target network
+- Deploy and note the contract address
+
+#### 2. Configure Environment Variables
+
+```bash
+# Copy the template
+cp .env.example .env.local
+
+# Edit .env.local with your values
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_from_dashboard
+NEXT_PUBLIC_DEFAULT_NETWORK=rootstock-testnet
+NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS=0x... # from step 1
+NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS=0x... # from step 1
+```
+
+#### 3. Test Locally
+
+```bash
+pnpm dev
+# Visit http://localhost:3000
+# Connect wallet and test token operations
+```
+
+#### 4. Deploy to Mainnet (When Ready)
+
+Only deploy to mainnet after:
+- ✅ Full testing on testnet
+- ✅ Verified contract security
+- ✅ Code audit or review
+- ✅ Test with real transactions
+
+```bash
+# Create mainnet contracts on Thirdweb Dashboard
+
+# Update .env for production
+NEXT_PUBLIC_DEFAULT_NETWORK=rootstock-mainnet
+NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS=0x...  # mainnet contract
+NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS=0x... # mainnet contract
+```
+
+### Gas Optimization Tips
+
+**Reduce Transaction Costs:**
+1. **Batch Operations** - The dApp already batches NFT metadata fetches
+2. **Caching** - Token data is cached for 5 minutes to reduce RPC calls
+3. **Lazy Loading** - NFTs limit to 50 per wallet to avoid excessive loads
+4. **ERC20 Approvals** - Pre-approve tokens once instead of per-transaction
+
+**Monitor Gas Usage:**
+- Rootstock block explorer: https://explorer.rootstock.io
+- Check gas prices in RBTC
+- Optimize contract code for smaller bytecode
+
 ## Usage Guide
 
 ### Home Page
@@ -146,15 +227,17 @@ A production-ready Next.js 16 dApp starter kit for building decentralized applic
 
 ### ERC20 Tokens
 
-1. **Balance:** View your token balance
-2. **Transfer:** Send tokens to another address
-3. **Mint:** Create new tokens (mint new tokens)
+1. **Token Info:** View name, symbol, decimals, total supply
+2. **Balance:** Check your current token balance
+3. **Transfer:** Send tokens to another address with decimals support
+4. **Mint:** Create new tokens (requires mint permission)
+5. **Approve:** Grant spending permission to other contracts (required for DeFi)
 
 ### NFT Drop
 
-1. **Browse:** View collection information
+1. **Drop Info:** View collection metadata
 2. **Claim:** Claim available NFTs from the drop
-3. **Collection:** View your owned NFTs
+3. **Your Collection:** View your owned NFTs (limited to first 50 for performance)
 
 
 ## Environment Variables Reference
@@ -172,7 +255,7 @@ A production-ready Next.js 16 dApp starter kit for building decentralized applic
 
 - Ensure you have the correct network selected in your wallet
 - Check that NEXT_PUBLIC_THIRDWEB_CLIENT_ID is set correctly
-- Check that NEXT_PUBLIC_THIRDWEB_DEFAULT_NETWORK is set correctly
+- Check that NEXT_PUBLIC_DEFAULT_NETWORK is set correctly
 - Try refreshing the page and reconnecting
 
 ### Contract Interaction Errors
@@ -195,14 +278,85 @@ A production-ready Next.js 16 dApp starter kit for building decentralized applic
 - [Thirdweb Documentation](https://docs.thirdweb.com/)
 - [Rootstock GitHub](https://github.com/rsksmart)
 
+## Production Checklist
+
+Before deploying to mainnet, ensure:
+
+- [ ] All contracts tested on testnet
+- [ ] Contract addresses validated in `.env`
+- [ ] Wallet connection tested with multiple wallets
+- [ ] Error boundaries functioning (no white screens)
+- [ ] Toast notifications displaying correctly
+- [ ] JavaScript disabled fallback tested
+- [ ] Gas estimation accurate
+- [ ] Approval workflow tested for DEX operations
+- [ ] Rate limiting configured if needed
+- [ ] Error tracking (Sentry or similar) configured
+- [ ] Analytics configured for user interactions
+
 ## Security Considerations
 
-- Never expose your private keys or mnemonics
-- Use environment variables for sensitive data
-- Test contracts on testnet before mainnet deployment
-- Implement proper error handling for transactions
-- Validate all user inputs before contract interactions
-- Keep dependencies updated for security patches
+- **Private Keys:** Never expose your private keys or mnemonics
+- **Environment Variables:** Use `.env.local` for sensitive data, never commit to git
+- **Contract Testing:** Test contracts on testnet before mainnet deployment
+- **Input Validation:** Validate all user inputs before contract interactions
+- **Address Verification:** Always verify contract addresses match deployment
+- **Approvals:** Understand ERC20 approval risks before implementing auto-approval
+- **Error Handling:** Implement proper error handling for failed transactions
+- **Dependencies:** Keep npm packages updated for security patches
+- **XSS Prevention:** The dApp validates image URLs to prevent XSS attacks
+- **Rate Limiting:** Consider rate limiting RPC calls in production
+
+## Performance Considerations
+
+- **Caching:** Token metadata cached for 5 minutes (configurable)
+- **Batching:** NFT metadata fetches are batched with Promise.all
+- **Limits:** NFT display limited to 50 items per wallet
+- **Lazy Loading:** Components use React Suspense for code splitting
+- **Asset Optimization:** Tailwind CSS v4 with PurgeCSS enabled
+- **Bundle Size:** TypeScript + Next.js produces ~150KB gzipped
+
+## Testing Guide
+
+### Unit Tests
+
+```bash
+# Run unit tests
+pnpm test
+
+# Run with coverage
+pnpm test:coverage
+```
+
+### Manual Testing Checklist
+
+1. **Wallet Connection**
+   - [ ] Connect with MetaMask
+   - [ ] Disconnect and reconnect
+   - [ ] Switch between testnet and mainnet
+
+2. **ERC20 Operations**
+   - [ ] View token balance
+   - [ ] Transfer tokens to self
+   - [ ] Mint new tokens
+   - [ ] Approve spender address
+
+3. **ERC721 Operations**
+   - [ ] View NFT collection info
+   - [ ] Claim an NFT
+   - [ ] View owned NFTs
+
+4. **Error Scenarios**
+   - [ ] Insufficient balance
+   - [ ] Wrong network selected
+   - [ ] Invalid addresses
+   - [ ] Network errors
+
+5. **Browser Compatibility**
+   - [ ] Chrome/Edge
+   - [ ] Firefox
+   - [ ] Safari
+   - [ ] Mobile (MetaMask Mobile)
 
 ## Support
 

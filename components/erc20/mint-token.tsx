@@ -30,6 +30,7 @@ export function MintToken({ contractAddress }: MintTokenProps) {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<MintForm>();
   const [error, setError] = useState<string | null>(null);
 
@@ -48,8 +49,6 @@ export function MintToken({ contractAddress }: MintTokenProps) {
         chain: activeChain,
       });
 
-      const amount = BigInt(data.amount) * BigInt(10 ** 18);
-
       const transaction = claimTo({
         contract,
         to: account.address,
@@ -60,10 +59,10 @@ export function MintToken({ contractAddress }: MintTokenProps) {
         transaction,
         account,
       });
-      
+
+      reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mint failed");
-      throw err;
     }
   };
 
@@ -88,6 +87,10 @@ export function MintToken({ contractAddress }: MintTokenProps) {
             min: {
               value: 0.1,
               message: "Amount must be greater than 0",
+            },
+            max: {
+              value: 1_000_000,
+              message: "Amount cannot exceed 1,000,000",
             },
           })}
         />

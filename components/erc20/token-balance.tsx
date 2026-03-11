@@ -21,6 +21,8 @@ export function TokenBalance({ contractAddress, userAddress }: TokenBalanceProps
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetchBalance = async () => {
       try {
         setLoading(true)
@@ -44,22 +46,31 @@ export function TokenBalance({ contractAddress, userAddress }: TokenBalanceProps
           }),
         ])
 
-        setBalance(String(balanceData))
-        setDecimals(Number(decimalsData))
+        if (!cancelled) {
+          setBalance(String(balanceData))
+          setDecimals(Number(decimalsData))
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch balance")
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch balance")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchBalance()
+
+    return () => {
+      cancelled = true
+    }
   }, [contractAddress, userAddress])
 
   if (loading) return <LoadingCard />
   if (error) return <ErrorState error={error} />
 
-  const displayBalance = (BigInt(balance) / BigInt(10 ** decimals)).toString()
+  const displayBalance = (Number(BigInt(balance)) / 10 ** decimals).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  })
 
   return (
     <Card>

@@ -24,12 +24,53 @@ interface NFT {
   }
 }
 
+/** Maximum number of NFTs to load per wallet to avoid excessive RPC calls */
+const NFT_LOAD_LIMIT = 50
+
+function resolveUri(uri: string): string {
+  if (uri.startsWith("ipfs://")) {
+    return uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+  }
+  return uri
+}
+
+/**
+ * Only allow http/https image URLs to prevent XSS via javascript: or data: URIs
+ * that could be embedded in malicious NFT metadata.
+ */
+function isSafeImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+  } catch {
+    return false
+  }
+}
+
+async function fetchMetadata(uri: string): Promise<NFT["metadata"] | undefined> {
+  try {
+    const response = await fetch(resolveUri(uri))
+    if (!response.ok) return undefined
+    const json = await response.json()
+    const resolvedImage = json.image ? resolveUri(String(json.image)) : undefined
+    return {
+      name: json.name,
+      image: resolvedImage && isSafeImageUrl(resolvedImage) ? resolvedImage : undefined,
+      description: json.description,
+    }
+  } catch {
+    return undefined
+  }
+}
+
 export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
   const [nfts, setNfts] = useState<NFT[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetchNFTs = async () => {
       try {
         setLoading(true)
@@ -46,43 +87,64 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
           params: [userAddress],
         })
 
-        const balanceNum = Number(balance)
+        const balanceBig = BigInt(balance)
+        const limitBig = BigInt(NFT_LOAD_LIMIT)
+        const loadCount = balanceBig < limitBig ? balanceBig : limitBig
         const userNFTs: NFT[] = []
 
-        for (let i = 0; i < balanceNum; i++) {
-          try {
-            const tokenId = await readContract({
+        // Batch 1: Fetch all tokenIds in parallel
+        const tokenIdPromises: Promise<bigint>[] = []
+        for (let i = BigInt(0); i < loadCount; i++) {
+          tokenIdPromises.push(
+            readContract({
               contract,
               method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-              params: [userAddress, BigInt(i)],
-            })
+              params: [userAddress, i],
+            }).then((id) => BigInt(id))
+          )
+        }
+        const tokenIds = await Promise.all(tokenIdPromises)
+        if (cancelled) return
 
-            const uri = await readContract({
-              contract,
-              method: "function tokenURI(uint256 tokenId) view returns (string)",
-              params: [tokenId],
-            })
+        // Batch 2: Fetch all tokenURIs in parallel
+        const uriPromises = tokenIds.map((tokenId) =>
+          readContract({
+            contract,
+            method: "function tokenURI(uint256 tokenId) view returns (string)",
+            params: [tokenId],
+          }).then((uri) => String(uri))
+        )
+        const tokenUris = await Promise.all(uriPromises)
+        if (cancelled) return
 
-            userNFTs.push({
-              tokenId: String(tokenId),
-              uri: String(uri),
-            })
-          } catch (err) {
-            console.error(err)
-            // Skip NFTs that fail to load
-          }
+        // Batch 3: Fetch all metadata in parallel
+        const metadataPromises = tokenUris.map((uri) => fetchMetadata(uri))
+        const allMetadata = await Promise.all(metadataPromises)
+        if (cancelled) return
+
+        // Combine results
+        for (let i = 0; i < tokenIds.length; i++) {
+          userNFTs.push({
+            tokenId: String(tokenIds[i]),
+            uri: tokenUris[i],
+            metadata: allMetadata[i],
+          })
         }
 
-        setNfts(userNFTs)
+        if (!cancelled) setNfts(userNFTs)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch NFTs")
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch NFTs")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (contractAddress && userAddress) {
       fetchNFTs()
+    }
+
+    return () => {
+      cancelled = true
     }
   }, [contractAddress, userAddress])
 
@@ -95,7 +157,7 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         <CardContent className="pt-6">
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
             <ImageIcon className="size-8" />
-            <p>You don't own any NFTs from this collection yet</p>
+            <p>You don&apos;t own any NFTs from this collection yet</p>
           </div>
         </CardContent>
       </Card>
@@ -103,14 +165,20 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-4">
+      {nfts.length === NFT_LOAD_LIMIT && (
+        <p className="text-xs text-muted-foreground">
+          Showing the first {NFT_LOAD_LIMIT} NFTs in your wallet.
+        </p>
+      )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {nfts.map((nft) => (
         <Card key={nft.tokenId} className="overflow-hidden">
           <CardContent className="p-0">
             <div className="aspect-square bg-muted flex items-center justify-center">
               {nft.metadata?.image ? (
                 <img
-                  src={nft.metadata.image || "/placeholder.svg"}
+                  src={nft.metadata.image}
                   alt={nft.metadata.name || `NFT #${nft.tokenId}`}
                   className="w-full h-full object-cover"
                 />
@@ -118,13 +186,17 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
                 <ImageIcon className="size-8 text-muted-foreground" />
               )}
             </div>
-            <div className="p-4 space-y-2">
+            <div className="p-4 space-y-1">
               <p className="font-semibold">{nft.metadata?.name || `NFT #${nft.tokenId}`}</p>
               <p className="text-xs text-muted-foreground">ID: {nft.tokenId}</p>
+              {nft.metadata?.description && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{nft.metadata.description}</p>
+              )}
             </div>
           </CardContent>
         </Card>
       ))}
+      </div>
     </div>
   )
 }

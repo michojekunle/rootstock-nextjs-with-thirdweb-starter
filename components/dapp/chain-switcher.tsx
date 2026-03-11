@@ -1,8 +1,8 @@
 "use client"
 
-import { useActiveWallet, useSwitchActiveWalletChain } from "thirdweb/react"
-import { useActiveWalletChain } from "thirdweb/react"
+import { useActiveWallet, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,9 +33,13 @@ export function ChainSwitcher() {
       const chain = chains.find((c) => c.id === chainId)
       if (chain) {
         await switchChain(chain)
+        toast.success(`Switched to ${chain.name}`)
       }
     } catch (error) {
-      console.error("Failed to switch chain:", error)
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to switch chain:", error)
+      }
+      toast.error("Failed to switch network")
     }
   }
 

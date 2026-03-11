@@ -25,6 +25,8 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetchDropInfo = async () => {
       try {
         setLoading(true)
@@ -54,19 +56,25 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
           params: [],
         })
 
-        setDropData({
-          name: String(name),
-          symbol: String(symbol),
-          totalSupply: String(totalSupply),
-        })
+        if (!cancelled) {
+          setDropData({
+            name: String(name),
+            symbol: String(symbol),
+            totalSupply: String(totalSupply),
+          })
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch NFT drop info")
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch NFT drop info")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchDropInfo()
+
+    return () => {
+      cancelled = true
+    }
   }, [contractAddress])
 
   if (loading) return <LoadingCard />
@@ -88,19 +96,19 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
-        <CardContent className="space-y-2">
+        <CardContent className="pt-6 space-y-2">
           <p className="text-sm text-muted-foreground">Collection Name</p>
           <p className="text-lg font-semibold">{dropData.name}</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="space-y-2">
+        <CardContent className="pt-6 space-y-2">
           <p className="text-sm text-muted-foreground">Symbol</p>
           <p className="text-lg font-semibold">{dropData.symbol}</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="space-y-2">
+        <CardContent className="pt-6 space-y-2">
           <p className="text-sm text-muted-foreground">Total Minted</p>
           <p className="text-lg font-semibold">{dropData.totalSupply}</p>
         </CardContent>

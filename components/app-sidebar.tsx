@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  LayoutDashboard,
-  Coins,
-  ImageIcon,
-  ShoppingCart,
-  Settings,
-  ChevronUp,
-  User2,
-} from "lucide-react";
+import { LayoutDashboard, Coins, ImageIcon, ChevronUp, User2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,7 +14,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -32,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useActiveAccount, useActiveWallet, useDisconnect } from "thirdweb/react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const navigation = [
   {
@@ -60,7 +52,6 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        {/* ... header content ... */}
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-lg bg-primary">
             <span className="text-lg font-bold text-primary-foreground">R</span>
@@ -114,9 +105,7 @@ export function AppSidebar() {
                   <span className="text-sm font-medium">
                     {account.address.slice(0, 6)}...{account.address.slice(-4)}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    Connected
-                  </span>
+                  <span className="text-xs text-muted-foreground">Connected</span>
                 </div>
                 <ChevronUp className="size-4 opacity-50" />
               </Button>
@@ -124,7 +113,10 @@ export function AppSidebar() {
             <DropdownMenuContent side="top" align="end" className="w-56">
               <DropdownMenuItem
                 onClick={() => {
-                  navigator.clipboard.writeText(account.address);
+                  navigator.clipboard
+                    .writeText(account.address)
+                    .then(() => toast.success("Address copied to clipboard"))
+                    .catch(() => toast.error("Failed to copy address"));
                 }}
               >
                 Copy Address
