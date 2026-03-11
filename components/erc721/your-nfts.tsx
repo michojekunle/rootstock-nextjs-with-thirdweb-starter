@@ -49,7 +49,7 @@ function isSafeImageUrl(url: string): boolean {
 
 async function fetchMetadata(uri: string): Promise<NFT["metadata"] | undefined> {
   try {
-    const response = await fetch(resolveUri(uri))
+    const response = await fetch(resolveUri(uri), { signal: AbortSignal.timeout(5000) })
     if (!response.ok) return undefined
     const json = await response.json()
     const resolvedImage = json.image ? resolveUri(String(json.image)) : undefined
@@ -74,6 +74,7 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
     const fetchNFTs = async () => {
       try {
         setLoading(true)
+        setError(null)
         const chain = getActiveChain()
         const contract = getContract({
           client,
@@ -81,6 +82,7 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
           chain,
         })
 
+        // Get the user's NFT balance
         const balance = await readContract({
           contract,
           method: "function balanceOf(address account) view returns (uint256)",
@@ -90,50 +92,76 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         const balanceBig = BigInt(balance)
         const limitBig = BigInt(NFT_LOAD_LIMIT)
         const loadCount = balanceBig < limitBig ? balanceBig : limitBig
-        const userNFTs: NFT[] = []
 
-        // Batch 1: Fetch all tokenIds in parallel
-        const tokenIdPromises: Promise<bigint>[] = []
-        for (let i = BigInt(0); i < loadCount; i++) {
-          tokenIdPromises.push(
-            readContract({
-              contract,
-              method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-              params: [userAddress, i],
-            }).then((id) => BigInt(id))
-          )
+        if (loadCount === BigInt(0)) {
+          if (!cancelled) setNfts([])
+          return
         }
-        const tokenIds = await Promise.all(tokenIdPromises)
+
+        const userNFTs: NFT[] = []
+        let tokenIds: bigint[] = []
+
+        // Try to fetch tokenIds using ERC721Enumerable's tokenOfOwnerByIndex
+        // If that fails, fall back to sequential indices (legacy approach)
+        try {
+          const tokenIdPromises: Promise<bigint>[] = []
+          for (let i = BigInt(0); i < loadCount; i++) {
+            tokenIdPromises.push(
+              readContract({
+                contract,
+                method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+                params: [userAddress, i],
+              }).then((id) => BigInt(id))
+            )
+          }
+          tokenIds = await Promise.all(tokenIdPromises)
+        } catch (enumerableError) {
+          // Contract doesn't support ERC721Enumerable, fall back to sequential indices
+          console.warn("ERC721Enumerable not supported, using sequential indices", enumerableError)
+          for (let i = BigInt(0); i < loadCount; i++) {
+            tokenIds.push(i)
+          }
+        }
+
         if (cancelled) return
 
-        // Batch 2: Fetch all tokenURIs in parallel
+        // Batch fetch all tokenURIs in parallel
         const uriPromises = tokenIds.map((tokenId) =>
           readContract({
             contract,
             method: "function tokenURI(uint256 tokenId) view returns (string)",
             params: [tokenId],
-          }).then((uri) => String(uri))
+          })
+            .then((uri) => ({ tokenId, uri: String(uri), error: null }))
+            .catch((err) => ({ tokenId, uri: "", error: err }))
         )
-        const tokenUris = await Promise.all(uriPromises)
+        const uriResults = await Promise.all(uriPromises)
         if (cancelled) return
 
-        // Batch 3: Fetch all metadata in parallel
-        const metadataPromises = tokenUris.map((uri) => fetchMetadata(uri))
-        const allMetadata = await Promise.all(metadataPromises)
+        // Filter out failed URI fetches and batch fetch metadata
+        const validUris = uriResults.filter((r) => !r.error)
+        const metadataPromises = validUris.map((result) =>
+          fetchMetadata(result.uri).then((metadata) => ({ ...result, metadata }))
+        )
+        const allResults = await Promise.all(metadataPromises)
         if (cancelled) return
 
-        // Combine results
-        for (let i = 0; i < tokenIds.length; i++) {
+        // Combine results into NFT objects
+        for (const result of allResults) {
           userNFTs.push({
-            tokenId: String(tokenIds[i]),
-            uri: tokenUris[i],
-            metadata: allMetadata[i],
+            tokenId: String(result.tokenId),
+            uri: result.uri,
+            metadata: result.metadata,
           })
         }
 
         if (!cancelled) setNfts(userNFTs)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch NFTs")
+        if (!cancelled) {
+          const errorMessage = err instanceof Error ? err.message : "Failed to fetch NFTs"
+          setError(errorMessage)
+          console.error("NFT fetching error:", err)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -172,30 +200,30 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         </p>
       )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {nfts.map((nft) => (
-        <Card key={nft.tokenId} className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="aspect-square bg-muted flex items-center justify-center">
-              {nft.metadata?.image ? (
-                <img
-                  src={nft.metadata.image}
-                  alt={nft.metadata.name || `NFT #${nft.tokenId}`}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <ImageIcon className="size-8 text-muted-foreground" />
-              )}
-            </div>
-            <div className="p-4 space-y-1">
-              <p className="font-semibold">{nft.metadata?.name || `NFT #${nft.tokenId}`}</p>
-              <p className="text-xs text-muted-foreground">ID: {nft.tokenId}</p>
-              {nft.metadata?.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{nft.metadata.description}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+        {nfts.map((nft) => (
+          <Card key={nft.tokenId} className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-square bg-muted flex items-center justify-center">
+                {nft.metadata?.image ? (
+                  <img
+                    src={nft.metadata.image}
+                    alt={nft.metadata.name || `NFT #${nft.tokenId}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="size-8 text-muted-foreground" />
+                )}
+              </div>
+              <div className="p-4 space-y-1">
+                <p className="font-semibold">{nft.metadata?.name || `NFT #${nft.tokenId}`}</p>
+                <p className="text-xs text-muted-foreground">ID: {nft.tokenId}</p>
+                {nft.metadata?.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{nft.metadata.description}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   )

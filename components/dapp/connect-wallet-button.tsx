@@ -30,7 +30,6 @@ export function ConnectWalletButton() {
       }}
       connectModal={{
         title: "Connect to Rootstock",
-        titleIcon: "/icon.svg",
         showThirdwebBranding: false,
         size: "compact",
       }}
