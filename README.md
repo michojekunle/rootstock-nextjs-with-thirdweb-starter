@@ -1,5 +1,7 @@
 # Rootstock Nextjs Thirdweb dApp Starter Kit
 
+<img width="1438" height="831" alt="Screenshot 2026-03-19 at 23 13 50" src="https://github.com/user-attachments/assets/fd7008d9-68e9-4371-a8d7-9550e37216cd" />
+
 A production-ready Next.js 16 dApp starter kit for building decentralized applications on the Rootstock blockchain using Thirdweb SDK v5.
 
 ## Features
