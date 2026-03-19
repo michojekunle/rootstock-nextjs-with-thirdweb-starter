@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/dapp/error-state"
 import { client } from "@/lib/thirdweb"
 import { getContract, readContract } from "thirdweb"
 import { getActiveChain } from "@/lib/chains"
-import { Info } from "lucide-react"
+import { Tag, Hash, Layers } from "lucide-react"
 
 interface NFTDropInfoProps {
   contractAddress: string
@@ -17,6 +17,30 @@ interface DropData {
   name: string
   symbol: string
   totalSupply: string
+}
+
+interface StatCardProps {
+  icon: React.ElementType
+  label: string
+  value: string
+}
+
+function StatCard({ icon: Icon, label, value }: StatCardProps) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
+          <Icon className="size-4 text-violet-500" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <p className="text-sm font-semibold truncate">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
@@ -64,7 +88,8 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
           })
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch NFT drop info")
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "Failed to fetch NFT drop info")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -83,36 +108,18 @@ export function NFTDropInfo({ contractAddress }: NFTDropInfoProps) {
   if (!dropData) {
     return (
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Info className="size-4" />
-            <p>No NFT drop information available</p>
-          </div>
+        <CardContent className="flex items-center justify-center py-8">
+          <p className="text-sm text-muted-foreground">No collection data available</p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <Card>
-        <CardContent className="pt-6 space-y-2">
-          <p className="text-sm text-muted-foreground">Collection Name</p>
-          <p className="text-lg font-semibold">{dropData.name}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-6 space-y-2">
-          <p className="text-sm text-muted-foreground">Symbol</p>
-          <p className="text-lg font-semibold">{dropData.symbol}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-6 space-y-2">
-          <p className="text-sm text-muted-foreground">Total Minted</p>
-          <p className="text-lg font-semibold">{dropData.totalSupply}</p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-3 sm:grid-cols-3">
+      <StatCard icon={Tag} label="Collection" value={dropData.name} />
+      <StatCard icon={Hash} label="Symbol" value={dropData.symbol} />
+      <StatCard icon={Layers} label="Total Minted" value={dropData.totalSupply} />
     </div>
   )
 }

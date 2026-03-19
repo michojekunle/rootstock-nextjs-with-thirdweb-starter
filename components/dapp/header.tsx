@@ -10,16 +10,16 @@ export function Header() {
   const wallet = useActiveWallet()
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
-      <SidebarTrigger />
-      <Separator orientation="vertical" className="h-6" />
+    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 backdrop-blur-xl px-4">
+      <SidebarTrigger className="shrink-0" />
+      <Separator orientation="vertical" className="h-5 shrink-0" />
 
-      <div className="flex flex-1 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg hidden md:block font-semibold">Rootstock dApp Starter</h1>
-        </div>
+      <div className="flex flex-1 items-center justify-between min-w-0">
+        <h1 className="hidden md:block text-sm font-semibold text-foreground/70 truncate">
+          Rootstock dApp Starter
+        </h1>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           {wallet && <ChainSwitcher />}
           <ConnectWalletButton />
         </div>
