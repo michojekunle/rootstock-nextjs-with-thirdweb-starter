@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { WalletStatus } from "@/components/dapp/wallet-status";
 import { ChainBadge } from "@/components/dapp/chain-badge";
-import { Coins, ImageIcon, ShoppingCart, Code2 } from "lucide-react";
+import { Coins, ImageIcon, Code2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useActiveWalletChain } from "thirdweb/react";
@@ -55,7 +55,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Features</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {features.map((feature) => (
             <Card key={feature.href} className="transition-all hover:shadow-md">
               <CardHeader>

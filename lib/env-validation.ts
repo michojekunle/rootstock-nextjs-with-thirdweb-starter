@@ -47,7 +47,7 @@ export function validateEnvironment(): EnvValidationResult {
     );
   } else if (!isValidContractAddress(erc20Address)) {
     errors.push(
-      `NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS "${erc20Address}" is not a valid EVM address. Format: 0x + 40 hex chars`
+      `NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS "${erc20Address}" is not a valid EVM address (format: 0x + 40 hex chars, EIP-55 checksum required)`
     );
   }
 
@@ -59,7 +59,7 @@ export function validateEnvironment(): EnvValidationResult {
     );
   } else if (!isValidContractAddress(nftDropAddress)) {
     errors.push(
-      `NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS "${nftDropAddress}" is not a valid EVM address. Format: 0x + 40 hex chars`
+      `NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS "${nftDropAddress}" is not a valid EVM address (format: 0x + 40 hex chars, EIP-55 checksum required)`
     );
   }
 

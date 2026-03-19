@@ -31,6 +31,11 @@ Object.defineProperty(window, "localStorage", {
 describe("cache", () => {
   beforeEach(() => {
     localStorage.clear();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe("setCached and getCached", () => {
@@ -49,14 +54,15 @@ describe("cache", () => {
 
     it("expires cached data after TTL", () => {
       const testData = { value: "test" };
-      // Set with 0ms TTL (immediately expired)
-      setCached("test_key", testData, 0);
+      // Set with 100ms TTL
+      setCached("test_key", testData, 100);
 
-      // Wait a tiny bit and check
-      setTimeout(() => {
-        const retrieved = getCached("test_key");
-        expect(retrieved).toBeNull();
-      }, 10);
+      // Should still be present before expiry
+      expect(getCached("test_key")).toEqual(testData);
+
+      // Advance time past the TTL and verify the entry is treated as expired
+      jest.advanceTimersByTime(101);
+      expect(getCached("test_key")).toBeNull();
     });
 
     it("handles different data types", () => {

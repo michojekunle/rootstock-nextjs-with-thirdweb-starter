@@ -51,8 +51,8 @@ A production-ready Next.js 16 dApp starter kit for building decentralized applic
    # Required: Thirdweb Client ID from dashboard
    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
    
-   # Optional: Default network (mainnet or testnet)
-   NEXT_PUBLIC_DEFAULT_NETWORK=testnet
+   # Optional: Default network ("rootstock-mainnet" or "rootstock-testnet")
+   NEXT_PUBLIC_DEFAULT_NETWORK=rootstock-testnet
    
    # Optional: Contract addresses (add after deployment)
    NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS=
@@ -245,7 +245,7 @@ NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS=0x... # mainnet contract
 | Variable | Required | Description |
 | --- | --- | --- |
 | `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` | Yes | Your Thirdweb API key from dashboard |
-| `NEXT_PUBLIC_DEFAULT_NETWORK` | No | Default network: "testnet" or "mainnet" (default: "testnet") |
+| `NEXT_PUBLIC_DEFAULT_NETWORK` | No | Default network: `"rootstock-testnet"` or `"rootstock-mainnet"` (default: `"rootstock-testnet"`) |
 | `NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS` | No | ERC20 token contract address |
 | `NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS` | No | NFT Drop contract address |
 
@@ -313,7 +313,7 @@ Before deploying to mainnet, ensure:
 - **Batching:** NFT metadata fetches are batched with Promise.all
 - **Limits:** NFT display limited to 50 items per wallet
 - **Lazy Loading:** Components use React Suspense for code splitting
-- **Asset Optimization:** Tailwind CSS v4 with PurgeCSS enabled
+- **Asset Optimization:** Tailwind CSS v4 with built-in dead-code elimination (no PurgeCSS — that is v2/v3 only)
 - **Bundle Size:** TypeScript + Next.js produces ~150KB gzipped
 
 ## Testing Guide

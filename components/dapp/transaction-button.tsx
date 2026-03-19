@@ -46,6 +46,7 @@ export function TransactionButton({
 
   return (
     <Button
+      type="button"
       onClick={handleClick}
       disabled={disabled || status === "loading"}
       className={cn(

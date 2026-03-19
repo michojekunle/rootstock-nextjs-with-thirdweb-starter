@@ -67,7 +67,7 @@ export function MintToken({ contractAddress }: MintTokenProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />

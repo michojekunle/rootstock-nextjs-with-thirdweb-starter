@@ -8,6 +8,7 @@ import { client } from "@/lib/thirdweb"
 import { getContract, readContract } from "thirdweb"
 import { getActiveChain } from "@/lib/chains"
 import { Wallet } from "lucide-react"
+import { formatTokenAmount } from "@/lib/utils"
 
 interface TokenBalanceProps {
   contractAddress: string
@@ -67,10 +68,7 @@ export function TokenBalance({ contractAddress, userAddress }: TokenBalanceProps
   if (loading) return <LoadingCard />
   if (error) return <ErrorState error={error} />
 
-  const displayBalance = (Number(BigInt(balance)) / 10 ** decimals).toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 6,
-  })
+  const displayBalance = formatTokenAmount(balance, decimals)
 
   return (
     <Card>

@@ -1,18 +1,39 @@
 /**
  * Client-side caching utility for contract data with TTL (time-to-live).
  * Reduces RPC calls by caching token metadata, decimals, and other stable data.
+ *
+ * Security note: localStorage can be read and written by any JavaScript running
+ * on the same origin. An XSS vulnerability could allow a malicious script to
+ * inject fake token data. Mitigations in place:
+ *   1. Schema version (CACHE_VERSION) — entries from a different version are
+ *      discarded, which limits stale or incompatible data from persisting.
+ *   2. Short TTL (5 min default) — limits the window in which tampered data
+ *      could be served.
+ *   3. The app always re-fetches live data on user-initiated transactions.
+ * This cache is suitable for display data only, never for security decisions.
  */
 
 const CACHE_PREFIX = "rootstock_dapp_cache:";
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Increment this whenever the CacheEntry shape changes.
+ * Any stored entry with a different version will be treated as a cache miss
+ * and evicted, preventing stale or incompatible data from being returned.
+ */
+const CACHE_VERSION = 1;
+
 interface CacheEntry<T> {
+  v: number;
   data: T;
   expiresAt: number;
 }
 
 /**
- * Get a cached value if it exists and hasn't expired.
+ * Get a cached value if it exists, hasn't expired, and matches the current
+ * schema version. Returns null on any mismatch so the caller re-fetches.
+ *
+ * Note: localStorage is same-origin accessible. See module-level security note.
  */
 export function getCached<T>(key: string): T | null {
   try {
@@ -20,6 +41,13 @@ export function getCached<T>(key: string): T | null {
     if (!stored) return null;
 
     const entry: CacheEntry<T> = JSON.parse(stored);
+
+    // Reject entries from a different schema version
+    if (entry.v !== CACHE_VERSION) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return null;
+    }
+
     if (Date.now() > entry.expiresAt) {
       localStorage.removeItem(CACHE_PREFIX + key);
       return null;
@@ -41,6 +69,7 @@ export function getCached<T>(key: string): T | null {
 export function setCached<T>(key: string, data: T, ttlMs = DEFAULT_TTL_MS): void {
   try {
     const entry: CacheEntry<T> = {
+      v: CACHE_VERSION,
       data,
       expiresAt: Date.now() + ttlMs,
     };

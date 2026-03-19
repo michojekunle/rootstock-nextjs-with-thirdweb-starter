@@ -30,13 +30,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("ErrorBoundary caught an error:", error, errorInfo);
-    }
+    // Always log internally for monitoring; never expose raw details to the UI in production
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
+      const isDev = process.env.NODE_ENV === "development";
       return (
         this.props.fallback || (
           <Alert variant="destructive">
@@ -44,15 +44,19 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTitle>Something went wrong</AlertTitle>
             <AlertDescription>
               {this.props.componentName && (
-                <>
-                  <p className="mb-2">
-                    Error in {this.props.componentName}:
-                  </p>
-                </>
+                <p className="mb-2">
+                  {this.props.componentName} encountered an error.
+                </p>
               )}
-              <p className="text-xs font-mono text-destructive/80 max-w-md break-words">
-                {this.state.error?.message || "Unknown error"}
+              <p className="text-sm text-destructive/80">
+                An unexpected error occurred. Please reload the page or try again later.
               </p>
+              {/* Only expose raw error details in development to avoid leaking internal info */}
+              {isDev && this.state.error?.message && (
+                <p className="mt-2 text-xs font-mono text-destructive/70 max-w-md break-words border border-destructive/20 rounded p-2 bg-destructive/5">
+                  {this.state.error.message}
+                </p>
+              )}
               <button
                 onClick={() => window.location.reload()}
                 className="mt-3 px-3 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"

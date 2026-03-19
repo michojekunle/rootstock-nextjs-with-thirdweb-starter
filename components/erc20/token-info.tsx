@@ -9,6 +9,7 @@ import { getContract, readContract } from "thirdweb"
 import { getActiveChain } from "@/lib/chains"
 import { getCached, setCached, getTokenDataCacheKey } from "@/lib/cache"
 import { Info } from "lucide-react"
+import { formatTokenAmount } from "@/lib/utils"
 
 interface TokenInfoProps {
   contractAddress: string
@@ -132,10 +133,7 @@ export function TokenInfo({ contractAddress }: TokenInfoProps) {
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">Total Supply</p>
           <p className="text-lg font-semibold truncate">
-            {(Number(BigInt(tokenData.totalSupply)) / 10 ** tokenData.decimals).toLocaleString(undefined, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 6,
-            })}
+            {formatTokenAmount(tokenData.totalSupply, tokenData.decimals)}
           </p>
         </div>
       </CardContent>

@@ -47,6 +47,16 @@ function isSafeImageUrl(url: string): boolean {
   }
 }
 
+/** Max characters to display for NFT name/description — prevents UI breakage from malicious metadata */
+const MAX_NAME_LENGTH = 100
+const MAX_DESCRIPTION_LENGTH = 500
+
+function sanitizeText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed.slice(0, maxLength) : undefined
+}
+
 async function fetchMetadata(uri: string): Promise<NFT["metadata"] | undefined> {
   try {
     const response = await fetch(resolveUri(uri), { signal: AbortSignal.timeout(5000) })
@@ -54,9 +64,9 @@ async function fetchMetadata(uri: string): Promise<NFT["metadata"] | undefined> 
     const json = await response.json()
     const resolvedImage = json.image ? resolveUri(String(json.image)) : undefined
     return {
-      name: json.name,
+      name: sanitizeText(json.name, MAX_NAME_LENGTH),
       image: resolvedImage && isSafeImageUrl(resolvedImage) ? resolvedImage : undefined,
-      description: json.description,
+      description: sanitizeText(json.description, MAX_DESCRIPTION_LENGTH),
     }
   } catch {
     return undefined

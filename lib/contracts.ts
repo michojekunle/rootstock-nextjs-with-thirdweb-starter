@@ -3,6 +3,8 @@
  * Update these with your deployed contract addresses
  */
 
+import { isAddress } from "thirdweb/utils"
+
 export const CONTRACT_ADDRESSES = {
   // ERC20 Token Contract
   ERC20: process.env.NEXT_PUBLIC_ERC20_CONTRACT_ADDRESS || "",
@@ -11,15 +13,18 @@ export const CONTRACT_ADDRESSES = {
   NFT_DROP: process.env.NEXT_PUBLIC_NFT_DROP_CONTRACT_ADDRESS || "",
 } as const
 
-/** EIP-55 / EVM address: "0x" followed by exactly 40 hex characters */
-const EVM_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/
-
 /**
- * Returns true when the given string looks like a valid EVM contract address.
- * Does not perform checksum validation — just format.
+ * Returns true when the given string is a valid EVM address.
+ * Uses thirdweb's isAddress() which validates both format (0x + 40 hex chars)
+ * and EIP-55 mixed-case checksum to catch single-character typos.
  */
-export const isValidContractAddress = (address: string): boolean =>
-  EVM_ADDRESS_REGEX.test(address)
+export const isValidContractAddress = (address: string): boolean => {
+  try {
+    return isAddress(address)
+  } catch {
+    return false
+  }
+}
 
 /**
  * Returns true when all contract addresses are configured and well-formed

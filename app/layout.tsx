@@ -26,14 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <noscript>
-          <style>{`
-            html { display: none; }
-          `}</style>
-          <meta httpEquiv="refresh" content="0;url=about:blank" />
-        </noscript>
-      </head>
+      <head />
       <body className={`font-sans antialiased`}>
         <noscript>
           <div style={{

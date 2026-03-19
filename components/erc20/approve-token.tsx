@@ -17,7 +17,6 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
 
 interface ApproveForm {
   spenderAddress: string;
@@ -38,6 +37,7 @@ export function ApproveToken({ contractAddress }: ApproveTokenProps) {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
     reset,
   } = useForm<ApproveForm>();
@@ -90,7 +90,7 @@ export function ApproveToken({ contractAddress }: ApproveTokenProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
@@ -160,10 +160,7 @@ export function ApproveToken({ contractAddress }: ApproveTokenProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              const input = document.getElementById("amount") as HTMLInputElement;
-              if (input) input.value = "999999999";
-            }}
+            onClick={() => setValue("amount", "999999999", { shouldValidate: true })}
             className="whitespace-nowrap"
           >
             Max
