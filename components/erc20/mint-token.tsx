@@ -15,6 +15,7 @@ import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { claimTo } from "thirdweb/extensions/erc20";
+import { MIN_TOKEN_QUANTITY, MAX_MINT_QUANTITY } from "@/lib/constants";
 
 interface MintForm {
   amount: string;
@@ -31,7 +32,10 @@ export function MintToken({ contractAddress }: MintTokenProps) {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<MintForm>();
+  } = useForm<MintForm>({
+    // Fix #11: initialise defaultValues to prevent controlled/uncontrolled warnings
+    defaultValues: { amount: "" },
+  });
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: MintForm) => {
@@ -67,7 +71,8 @@ export function MintToken({ contractAddress }: MintTokenProps) {
   };
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+    // Fix #15: handleSubmit already calls preventDefault; no need for an extra wrapper
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
@@ -76,26 +81,33 @@ export function MintToken({ contractAddress }: MintTokenProps) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="amount">Amount to Mint</Label>
+        <Label htmlFor="mint-amount">Amount to Mint</Label>
+        {/* Fix #2 & #3: aria-describedby links the input to its error message */}
         <Input
-          id="amount"
+          id="mint-amount"
           type="number"
           placeholder="10.0"
           step="0.1"
+          aria-describedby="mint-amount-error"
+          aria-invalid={!!errors.amount}
           {...register("amount", {
             required: "Amount is required",
             min: {
-              value: 0.1,
-              message: "Amount must be greater than 0",
+              // Fix #4: use named constant instead of magic number
+              value: MIN_TOKEN_QUANTITY,
+              message: `Amount must be at least ${MIN_TOKEN_QUANTITY}`,
             },
             max: {
-              value: 1_000_000,
-              message: "Amount cannot exceed 1,000,000",
+              value: MAX_MINT_QUANTITY,
+              message: `Amount cannot exceed ${MAX_MINT_QUANTITY.toLocaleString()}`,
             },
           })}
         />
+        {/* id ties to aria-describedby; role="alert" announces errors to screen readers */}
         {errors.amount && (
-          <p className="text-xs text-destructive">{errors.amount.message}</p>
+          <p id="mint-amount-error" role="alert" className="text-xs text-destructive">
+            {errors.amount.message}
+          </p>
         )}
       </div>
 
@@ -104,6 +116,7 @@ export function MintToken({ contractAddress }: MintTokenProps) {
         successMessage="Mint successful"
         errorMessage="Mint failed"
         className="w-full"
+        aria-label="Mint tokens"
       >
         Mint Tokens
       </TransactionButton>

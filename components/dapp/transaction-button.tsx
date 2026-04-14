@@ -15,8 +15,15 @@ interface TransactionButtonProps extends React.ComponentProps<typeof Button> {
 }
 
 /**
- * Button component with built-in transaction state management
- * Shows loading, success, and error states automatically
+ * Button component with built-in transaction state management.
+ * Shows loading, success, and error states automatically.
+ *
+ * Accessibility:
+ * - aria-busy is set to true while the transaction is in progress so that
+ *   screen readers announce the processing state (#8).
+ * - aria-label updates to reflect the current button state so screen reader
+ *   users know what is happening without needing to see the icon (#8).
+ * - The button is disabled during loading to prevent duplicate submissions (#7).
  */
 export function TransactionButton({
   onTransaction,
@@ -25,6 +32,8 @@ export function TransactionButton({
   children,
   className,
   disabled,
+  // Forward any caller-supplied aria-label; fall back to derived label below
+  "aria-label": callerAriaLabel,
   ...props
 }: TransactionButtonProps) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
@@ -36,6 +45,7 @@ export function TransactionButton({
       setStatus("success")
       setTimeout(() => setStatus("idle"), 2000)
     } catch (error) {
+      // Fix #12: only log in development; replace with a structured logger in production
       if (process.env.NODE_ENV === "development") {
         console.error("Transaction error:", error)
       }
@@ -44,11 +54,25 @@ export function TransactionButton({
     }
   }
 
+  // Fix #8: derive an accessible label for each state so screen readers
+  // announce the change when the button transitions (e.g. "Processing transaction…")
+  const derivedAriaLabel =
+    status === "loading"
+      ? "Processing transaction…"
+      : status === "success"
+        ? successMessage
+        : status === "error"
+          ? errorMessage
+          : callerAriaLabel ?? undefined
+
   return (
     <Button
       type="button"
       onClick={handleClick}
       disabled={disabled || status === "loading"}
+      // Fix #8: aria-busy=true tells assistive technology the action is in-flight
+      aria-busy={status === "loading"}
+      aria-label={derivedAriaLabel}
       className={cn(
         "transition-all",
         status === "success" && "bg-green-600 hover:bg-green-600",

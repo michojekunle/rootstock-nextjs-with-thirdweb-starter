@@ -11,7 +11,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 backdrop-blur-xl px-4">
-      <SidebarTrigger className="shrink-0" />
+      <SidebarTrigger aria-label="Toggle Navigation Sidebar" className="shrink-0" />
       <Separator orientation="vertical" className="h-5 shrink-0" />
 
       <div className="flex flex-1 items-center justify-between min-w-0">

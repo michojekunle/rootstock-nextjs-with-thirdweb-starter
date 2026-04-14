@@ -46,7 +46,7 @@ export function ChainSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2 bg-transparent">
+        <Button variant="outline" className="gap-2 bg-transparent" aria-label={`Switch network, currently on ${currentChainName}`}>
           <span className="hidden md:block truncate">{currentChainName}</span>
           <span className="md:hidden block truncate">{currentChainName.split(" ")[1]}</span>
           <ChevronDown className="size-4 opacity-50" />

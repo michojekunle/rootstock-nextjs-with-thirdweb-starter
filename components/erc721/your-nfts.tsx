@@ -170,7 +170,10 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         if (!cancelled) {
           const errorMessage = err instanceof Error ? err.message : "Failed to fetch NFTs"
           setError(errorMessage)
-          console.error("NFT fetching error:", err)
+          // Fix #12: only log in development; use a structured logger in production
+          if (process.env.NODE_ENV === "development") {
+            console.error("NFT fetching error:", err)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -217,7 +220,13 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
                 {nft.metadata?.image ? (
                   <img
                     src={nft.metadata.image}
-                    alt={nft.metadata.name || `NFT #${nft.tokenId}`}
+                    // Fix #10: descriptive alt text includes collection context and token ID,
+                    // helping screen reader users identify which NFT they are viewing.
+                    alt={
+                      nft.metadata.name
+                        ? `${nft.metadata.name} — NFT #${nft.tokenId}`
+                        : `NFT #${nft.tokenId} from collection`
+                    }
                     className="w-full h-full object-cover"
                   />
                 ) : (

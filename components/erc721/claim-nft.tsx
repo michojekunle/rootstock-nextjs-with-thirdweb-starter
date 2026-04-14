@@ -15,6 +15,7 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MAX_NFT_CLAIM_QUANTITY } from "@/lib/constants";
 
 
 /** Native/gas token placeholder used by Thirdweb's claim conditions (EIP-7528) */
@@ -95,7 +96,8 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
   };
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+    // Fix #15: handleSubmit already prevents default; explicit wrapper removed
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
@@ -104,12 +106,15 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="quantity">Quantity to Claim</Label>
+        <Label htmlFor="claim-quantity">Quantity to Claim</Label>
+        {/* Fix #3: aria-describedby links input to its error node */}
         <Input
-          id="quantity"
+          id="claim-quantity"
           type="number"
           min="1"
-          max="10"
+          max={MAX_NFT_CLAIM_QUANTITY}
+          aria-describedby="claim-quantity-error"
+          aria-invalid={!!errors.quantity}
           {...register("quantity", {
             required: "Quantity is required",
             min: {
@@ -117,13 +122,16 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
               message: "Minimum quantity is 1",
             },
             max: {
-              value: 10,
-              message: "Maximum quantity is 10",
+              // Fix #4: use named constant instead of magic number
+              value: MAX_NFT_CLAIM_QUANTITY,
+              message: `Maximum quantity is ${MAX_NFT_CLAIM_QUANTITY}`,
             },
           })}
         />
         {errors.quantity && (
-          <p className="text-xs text-destructive">{errors.quantity.message}</p>
+          <p id="claim-quantity-error" role="alert" className="text-xs text-destructive">
+            {errors.quantity.message}
+          </p>
         )}
       </div>
 
@@ -132,6 +140,7 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
         successMessage="NFT claimed successfully"
         errorMessage="Claim failed"
         className="w-full"
+        aria-label="Claim NFT"
       >
         Claim NFT
       </TransactionButton>

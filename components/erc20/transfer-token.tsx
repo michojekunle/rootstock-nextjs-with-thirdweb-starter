@@ -16,6 +16,8 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isValidAddress } from "@/lib/utils";
+import { MIN_TOKEN_QUANTITY, MAX_TRANSFER_AMOUNT } from "@/lib/constants";
 
 interface TransferForm {
   to: string;
@@ -33,7 +35,9 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<TransferForm>();
+  } = useForm<TransferForm>({
+    defaultValues: { to: "", amount: "" },
+  });
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (data: TransferForm) => {
@@ -80,7 +84,8 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
   };
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+    // Fix #15: handleSubmit already prevents default; explicit wrapper removed
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
@@ -89,44 +94,54 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="to">Recipient Address</Label>
+        <Label htmlFor="transfer-to">Recipient Address</Label>
+        {/* Fix #3: aria-describedby links input to its error node */}
         <Input
-          id="to"
+          id="transfer-to"
           placeholder="0x..."
+          aria-describedby="transfer-to-error"
+          aria-invalid={!!errors.to}
           {...register("to", {
             required: "Recipient address is required",
-            pattern: {
-              value: /^0x[a-fA-F0-9]{40}$/,
-              message: "Invalid Ethereum address",
-            },
+            // Fix #5: replace regex with EIP-55 checksum validation
+            validate: (value) =>
+              isValidAddress(value) || "Invalid Ethereum address — check for typos",
           })}
         />
         {errors.to && (
-          <p className="text-xs text-destructive">{errors.to.message}</p>
+          <p id="transfer-to-error" role="alert" className="text-xs text-destructive">
+            {errors.to.message}
+          </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="amount">Amount</Label>
+        <Label htmlFor="transfer-amount">Amount</Label>
         <Input
-          id="amount"
+          id="transfer-amount"
           type="number"
           placeholder="1.0"
           step="0.1"
+          aria-describedby="transfer-amount-error"
+          aria-invalid={!!errors.amount}
           {...register("amount", {
             required: "Amount is required",
             min: {
-              value: 0.1,
-              message: "Amount must be greater than 0",
+              // Fix #4: use named constant instead of magic number
+              value: MIN_TOKEN_QUANTITY,
+              message: `Amount must be at least ${MIN_TOKEN_QUANTITY}`,
             },
             max: {
-              value: 1_000_000_000,
-              message: "Amount cannot exceed 1,000,000,000",
+              // Fix #4: use named constant instead of magic number
+              value: MAX_TRANSFER_AMOUNT,
+              message: `Amount cannot exceed ${MAX_TRANSFER_AMOUNT.toLocaleString()}`,
             },
           })}
         />
         {errors.amount && (
-          <p className="text-xs text-destructive">{errors.amount.message}</p>
+          <p id="transfer-amount-error" role="alert" className="text-xs text-destructive">
+            {errors.amount.message}
+          </p>
         )}
       </div>
 
@@ -135,6 +150,7 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
         successMessage="Transfer successful"
         errorMessage="Transfer failed"
         className="w-full"
+        aria-label="Transfer tokens"
       >
         Transfer Token
       </TransactionButton>
