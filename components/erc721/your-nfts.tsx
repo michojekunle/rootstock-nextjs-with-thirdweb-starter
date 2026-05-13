@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { LoadingCard } from "@/components/dapp/loading-card"
 import { ErrorState } from "@/components/dapp/error-state"
@@ -12,6 +12,12 @@ import { ImageIcon } from "lucide-react"
 interface YourNFTsProps {
   contractAddress: string
   userAddress: string
+  /** Increment to trigger a background re-fetch after a confirmed claim */
+  refreshKey?: number
+  /** Number of optimistic placeholder cards to prepend while re-fetching */
+  pendingCount?: number
+  /** Called once the re-fetch triggered by refreshKey completes */
+  onRefreshed?: () => void
 }
 
 interface NFT {
@@ -73,18 +79,46 @@ async function fetchMetadata(uri: string): Promise<NFT["metadata"] | undefined> 
   }
 }
 
-export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
+/** Shimmer placeholder shown for each optimistically-claimed NFT while re-fetching */
+function NFTPlaceholderCard() {
+  return (
+    <Card className="overflow-hidden animate-pulse">
+      <CardContent className="p-0">
+        <div className="aspect-square bg-muted/60" />
+        <div className="p-4 space-y-2">
+          <div className="h-4 w-2/3 rounded-md bg-muted" />
+          <div className="h-3 w-1/3 rounded-md bg-muted" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function YourNFTs({
+  contractAddress,
+  userAddress,
+  refreshKey = 0,
+  pendingCount = 0,
+  onRefreshed,
+}: YourNFTsProps) {
   const [nfts, setNfts] = useState<NFT[]>([])
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isFirstMount = useRef(true)
 
   useEffect(() => {
     let cancelled = false
 
     const fetchNFTs = async () => {
       try {
-        setLoading(true)
+        if (isFirstMount.current) {
+          setLoading(true)
+        } else {
+          setIsRefreshing(true)
+        }
         setError(null)
+
         const chain = getActiveChain()
         const contract = getContract({
           client,
@@ -156,7 +190,6 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         const allResults = await Promise.all(metadataPromises)
         if (cancelled) return
 
-        // Combine results into NFT objects
         for (const result of allResults) {
           userNFTs.push({
             tokenId: String(result.tokenId),
@@ -170,13 +203,17 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
         if (!cancelled) {
           const errorMessage = err instanceof Error ? err.message : "Failed to fetch NFTs"
           setError(errorMessage)
-          // Fix #12: only log in development; use a structured logger in production
           if (process.env.NODE_ENV === "development") {
             console.error("NFT fetching error:", err)
           }
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setIsRefreshing(false)
+          isFirstMount.current = false
+          onRefreshed?.()
+        }
       }
     }
 
@@ -187,12 +224,13 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
     return () => {
       cancelled = true
     }
-  }, [contractAddress, userAddress])
+  }, [contractAddress, userAddress, refreshKey])
 
   if (loading) return <LoadingCard />
   if (error) return <ErrorState error={error} />
 
-  if (nfts.length === 0) {
+  // Show empty state only when there are no real NFTs and no pending placeholders
+  if (nfts.length === 0 && pendingCount === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -212,7 +250,18 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
           Showing the first {NFT_LOAD_LIMIT} NFTs in your wallet.
         </p>
       )}
+      {/* Placeholder banner when a background re-fetch is live */}
+      {(isRefreshing || pendingCount > 0) && (
+        <p className="text-xs text-muted-foreground animate-pulse">
+          Updating your collection…
+        </p>
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Optimistic placeholder cards appear at the top of the grid */}
+        {pendingCount > 0 &&
+          Array.from({ length: pendingCount }).map((_, i) => (
+            <NFTPlaceholderCard key={`pending-${i}`} />
+          ))}
         {nfts.map((nft) => (
           <Card key={nft.tokenId} className="overflow-hidden">
             <CardContent className="p-0">
@@ -220,8 +269,6 @@ export function YourNFTs({ contractAddress, userAddress }: YourNFTsProps) {
                 {nft.metadata?.image ? (
                   <img
                     src={nft.metadata.image}
-                    // Fix #10: descriptive alt text includes collection context and token ID,
-                    // helping screen reader users identify which NFT they are viewing.
                     alt={
                       nft.metadata.name
                         ? `${nft.metadata.name} — NFT #${nft.tokenId}`

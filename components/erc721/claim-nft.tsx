@@ -34,9 +34,11 @@ interface ClaimForm {
 interface ClaimNFTProps {
   contractAddress: string;
   userAddress: string;
+  /** Called with the claimed quantity after the tx is confirmed on-chain */
+  onSuccess?: (quantity: number) => void;
 }
 
-export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
+export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTProps) {
   const account = useActiveAccount();
   const {
     register,
@@ -90,6 +92,7 @@ export function ClaimNFT({ contractAddress, userAddress }: ClaimNFTProps) {
       });
 
       reset();
+      onSuccess?.(Number(data.quantity));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Claim failed");
     }

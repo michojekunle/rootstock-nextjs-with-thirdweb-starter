@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react"
@@ -69,6 +70,21 @@ export default function ERC721Page() {
   const switchChain = useSwitchActiveWalletChain()
   const isCorrectChain = chain?.id === configuredChain.id
 
+  // Optimistic-UI state ──────────────────────────────────────────────────────
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [pendingClaimCount, setPendingClaimCount] = useState(0)
+
+  /** Claim confirmed: show N placeholder cards immediately, trigger background re-fetch */
+  const handleClaimSuccess = useCallback((quantity: number) => {
+    setPendingClaimCount(quantity)
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  /** YourNFTs finished its background re-fetch — clear the pending placeholders */
+  const handleNFTsRefreshed = useCallback(() => {
+    setPendingClaimCount(0)
+  }, [])
+
   if (!account) {
     return (
       <div className="flex flex-1 flex-col gap-6 p-6 max-w-3xl w-full">
@@ -122,12 +138,16 @@ export default function ERC721Page() {
       {/* Header */}
       <PageHeader />
 
-      {/* Collection stats */}
+      {/* Collection stats — minted count updates optimistically after each claim */}
       <div
         className="animate-slide-up"
         style={{ animationDelay: "60ms" }}
       >
-        <NFTDropInfo contractAddress={CONTRACT_ADDRESSES.NFT_DROP} />
+        <NFTDropInfo
+          contractAddress={CONTRACT_ADDRESSES.NFT_DROP}
+          refreshKey={refreshKey}
+          optimisticMintedDelta={pendingClaimCount > 0 ? pendingClaimCount : null}
+        />
       </div>
 
       {/* Operations */}
@@ -161,6 +181,7 @@ export default function ERC721Page() {
               <ClaimNFT
                 contractAddress={CONTRACT_ADDRESSES.NFT_DROP}
                 userAddress={account.address}
+                onSuccess={handleClaimSuccess}
               />
             </TabsContent>
 
@@ -171,6 +192,9 @@ export default function ERC721Page() {
               <YourNFTs
                 contractAddress={CONTRACT_ADDRESSES.NFT_DROP}
                 userAddress={account.address}
+                refreshKey={refreshKey}
+                pendingCount={pendingClaimCount}
+                onRefreshed={handleNFTsRefreshed}
               />
             </TabsContent>
           </Tabs>
