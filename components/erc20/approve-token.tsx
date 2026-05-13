@@ -17,7 +17,7 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isValidAddress } from "@/lib/utils";
+import { isValidAddress, parseTokenAmount } from "@/lib/utils";
 import { MAX_APPROVAL_AMOUNT } from "@/lib/constants";
 
 interface ApproveForm {
@@ -27,6 +27,8 @@ interface ApproveForm {
 
 interface ApproveTokenProps {
   contractAddress: string;
+  /** Called after approval tx is confirmed on-chain */
+  onSuccess?: () => void;
 }
 
 /**
@@ -35,7 +37,7 @@ interface ApproveTokenProps {
  * Required for DEX swaps, lending protocols, and other DeFi operations.
  * Setting amount to "0" revokes an existing approval.
  */
-export function ApproveToken({ contractAddress }: ApproveTokenProps) {
+export function ApproveToken({ contractAddress, onSuccess }: ApproveTokenProps) {
   const account = useActiveAccount();
   const {
     register,
@@ -71,10 +73,8 @@ export function ApproveToken({ contractAddress }: ApproveTokenProps) {
         params: [],
       });
 
-      const decimalCount = Number(decimals);
-      const [intPart, fracPart = ""] = data.amount.split(".");
-      const paddedFrac = fracPart.padEnd(decimalCount, "0").slice(0, decimalCount);
-      const amount = BigInt(intPart) * BigInt(10 ** decimalCount) + BigInt(paddedFrac || "0");
+      // parseTokenAmount uses pure BigInt arithmetic — no float precision risk
+      const amount = parseTokenAmount(data.amount, Number(decimals));
 
       const transaction = prepareContractCall({
         contract,
@@ -89,6 +89,7 @@ export function ApproveToken({ contractAddress }: ApproveTokenProps) {
 
       setApprovalAmount(data.amount);
       reset();
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Approval failed");
     }

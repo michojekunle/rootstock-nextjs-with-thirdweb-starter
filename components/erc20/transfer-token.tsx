@@ -16,7 +16,7 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isValidAddress } from "@/lib/utils";
+import { isValidAddress, parseTokenAmount } from "@/lib/utils";
 import { MIN_TOKEN_QUANTITY, MAX_TRANSFER_AMOUNT } from "@/lib/constants";
 
 interface TransferForm {
@@ -26,9 +26,11 @@ interface TransferForm {
 
 interface TransferTokenProps {
   contractAddress: string;
+  /** Called with the transferred amount (human-readable) after the tx is confirmed on-chain */
+  onSuccess?: (amount: string) => void;
 }
 
-export function TransferToken({ contractAddress }: TransferTokenProps) {
+export function TransferToken({ contractAddress, onSuccess }: TransferTokenProps) {
   const account = useActiveAccount();
   const {
     register,
@@ -61,10 +63,8 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
         params: [],
       });
 
-      const decimalCount = Number(decimals);
-      const [intPart, fracPart = ""] = data.amount.split(".");
-      const paddedFrac = fracPart.padEnd(decimalCount, "0").slice(0, decimalCount);
-      const amount = BigInt(intPart) * BigInt(10 ** decimalCount) + BigInt(paddedFrac || "0");
+      // parseTokenAmount uses pure BigInt arithmetic — no float precision risk
+      const amount = parseTokenAmount(data.amount, Number(decimals));
 
       const transaction = prepareContractCall({
         contract,
@@ -78,6 +78,7 @@ export function TransferToken({ contractAddress }: TransferTokenProps) {
       });
 
       reset();
+      onSuccess?.(data.amount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transfer failed");
     }

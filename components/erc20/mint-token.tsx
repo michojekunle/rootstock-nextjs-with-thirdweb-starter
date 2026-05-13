@@ -23,9 +23,11 @@ interface MintForm {
 
 interface MintTokenProps {
   contractAddress: string;
+  /** Called with the minted amount (human-readable) after the tx is confirmed on-chain */
+  onSuccess?: (amount: string) => void;
 }
 
-export function MintToken({ contractAddress }: MintTokenProps) {
+export function MintToken({ contractAddress, onSuccess }: MintTokenProps) {
   const account = useActiveAccount();
   const {
     register,
@@ -65,6 +67,7 @@ export function MintToken({ contractAddress }: MintTokenProps) {
       });
 
       reset();
+      onSuccess?.(data.amount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mint failed");
     }

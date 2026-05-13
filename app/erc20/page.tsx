@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react"
@@ -7,7 +8,7 @@ import { Coins, Wallet, Network, ArrowLeftRight, Flame, ShieldCheck, Settings2 }
 import { MintToken } from "@/components/erc20/mint-token"
 import { TransferToken } from "@/components/erc20/transfer-token"
 import { ApproveToken } from "@/components/erc20/approve-token"
-import { TokenBalance } from "@/components/erc20/token-balance"
+import { TokenBalance, type OptimisticDelta } from "@/components/erc20/token-balance"
 import { TokenInfo } from "@/components/erc20/token-info"
 import { Button } from "@/components/ui/button"
 import { CONTRACT_ADDRESSES } from "@/lib/contracts"
@@ -71,6 +72,35 @@ export default function ERC20Page() {
   const switchChain = useSwitchActiveWalletChain()
   const isCorrectChain = chain?.id === configuredChain.id
 
+  // Optimistic-UI state ──────────────────────────────────────────────────────
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [optimisticDelta, setOptimisticDelta] = useState<OptimisticDelta | null>(null)
+  const [optimisticSupplyDelta, setOptimisticSupplyDelta] = useState<string | null>(null)
+
+  /** Mint confirmed: balance goes up, total supply goes up */
+  const handleMintSuccess = useCallback((amount: string) => {
+    setOptimisticDelta({ amount, type: "credit" })
+    setOptimisticSupplyDelta(amount)
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  /** Transfer confirmed: balance goes down (supply unchanged) */
+  const handleTransferSuccess = useCallback((amount: string) => {
+    setOptimisticDelta({ amount, type: "debit" })
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  /** Approval confirmed: no balance/supply change — just re-fetch to stay fresh */
+  const handleApproveSuccess = useCallback(() => {
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  /** TokenBalance finished its background re-fetch — clear the pending delta */
+  const handleBalanceRefreshed = useCallback(() => {
+    setOptimisticDelta(null)
+    setOptimisticSupplyDelta(null)
+  }, [])
+
   if (!account) {
     return (
       <div className="flex flex-1 flex-col gap-6 p-6 max-w-3xl w-full">
@@ -124,15 +154,22 @@ export default function ERC20Page() {
       {/* Header */}
       <PageHeader />
 
-      {/* Token stats */}
+      {/* Token stats — both cards update optimistically after each confirmed tx */}
       <div
         className="grid gap-4 sm:grid-cols-2 animate-slide-up"
         style={{ animationDelay: "60ms" }}
       >
-        <TokenInfo contractAddress={CONTRACT_ADDRESSES.ERC20} />
+        <TokenInfo
+          contractAddress={CONTRACT_ADDRESSES.ERC20}
+          refreshKey={refreshKey}
+          optimisticSupplyDelta={optimisticSupplyDelta}
+        />
         <TokenBalance
           contractAddress={CONTRACT_ADDRESSES.ERC20}
           userAddress={account.address}
+          refreshKey={refreshKey}
+          optimisticDelta={optimisticDelta}
+          onRefreshed={handleBalanceRefreshed}
         />
       </div>
 
@@ -168,21 +205,30 @@ export default function ERC20Page() {
               <p className="text-xs text-muted-foreground">
                 Send tokens from your wallet to any address on Rootstock.
               </p>
-              <TransferToken contractAddress={CONTRACT_ADDRESSES.ERC20} />
+              <TransferToken
+                contractAddress={CONTRACT_ADDRESSES.ERC20}
+                onSuccess={handleTransferSuccess}
+              />
             </TabsContent>
 
             <TabsContent value="mint" className="pt-4 space-y-4">
               <p className="text-xs text-muted-foreground">
                 Create new tokens and add them to a wallet — requires owner/minter role.
               </p>
-              <MintToken contractAddress={CONTRACT_ADDRESSES.ERC20} />
+              <MintToken
+                contractAddress={CONTRACT_ADDRESSES.ERC20}
+                onSuccess={handleMintSuccess}
+              />
             </TabsContent>
 
             <TabsContent value="approve" className="pt-4 space-y-4">
               <p className="text-xs text-muted-foreground">
                 Grant a spender address an allowance to transfer tokens on your behalf.
               </p>
-              <ApproveToken contractAddress={CONTRACT_ADDRESSES.ERC20} />
+              <ApproveToken
+                contractAddress={CONTRACT_ADDRESSES.ERC20}
+                onSuccess={handleApproveSuccess}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
