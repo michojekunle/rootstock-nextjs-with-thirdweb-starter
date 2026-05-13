@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { formatTokenAmount, isValidAddress } from "@/lib/utils";
+import { formatTokenAmount, parseTokenAmount, sanitizeContractString, isValidAddress } from "@/lib/utils";
 
 describe("Utility Functions", () => {
+  // ── formatTokenAmount ────────────────────────────────────────────────────────
   describe("formatTokenAmount", () => {
     it("should format whole numbers correctly", () => {
       expect(formatTokenAmount("1000000000000000000", 18)).toBe("1");
@@ -30,6 +31,65 @@ describe("Utility Functions", () => {
     });
   });
 
+  // ── parseTokenAmount ─────────────────────────────────────────────────────────
+  describe("parseTokenAmount", () => {
+    it("should parse a whole number with 18 decimals", () => {
+      expect(parseTokenAmount("1", 18)).toBe(BigInt("1000000000000000000"));
+    });
+
+    it("should parse a decimal amount correctly", () => {
+      expect(parseTokenAmount("1.5", 18)).toBe(BigInt("1500000000000000000"));
+    });
+
+    it("should handle zero", () => {
+      expect(parseTokenAmount("0", 18)).toBe(BigInt(0));
+    });
+
+    it("should truncate excess decimal places rather than rounding", () => {
+      // 0.001 with 2 decimals → 0 (truncated, not rounded)
+      expect(parseTokenAmount("0.001", 2)).toBe(BigInt(0));
+    });
+
+    it("should handle 6-decimal tokens (USDC-style)", () => {
+      expect(parseTokenAmount("1.5", 6)).toBe(BigInt("1500000"));
+    });
+
+    it("roundtrips with formatTokenAmount", () => {
+      const raw = "123456789000000000"
+      const formatted = formatTokenAmount(raw, 18)     // "0.123456"
+      const reparsed = parseTokenAmount(formatted, 18)
+      // Reparsed won't equal original exactly (6dp truncation) but must be close
+      expect(reparsed).toBe(BigInt("123456000000000000"))
+    });
+  });
+
+  // ── sanitizeContractString ───────────────────────────────────────────────────
+  describe("sanitizeContractString", () => {
+    it("returns the string unchanged when under the limit", () => {
+      expect(sanitizeContractString("MyToken")).toBe("MyToken");
+    });
+
+    it("truncates strings that exceed maxLength", () => {
+      const long = "A".repeat(200);
+      expect(sanitizeContractString(long).length).toBe(100);
+    });
+
+    it("respects a custom maxLength", () => {
+      expect(sanitizeContractString("ABCDEF", 4)).toBe("ABCD");
+    });
+
+    it("trims leading and trailing whitespace", () => {
+      expect(sanitizeContractString("  MyToken  ")).toBe("MyToken");
+    });
+
+    it("returns empty string for non-string input", () => {
+      expect(sanitizeContractString(42)).toBe("");
+      expect(sanitizeContractString(null)).toBe("");
+      expect(sanitizeContractString(undefined)).toBe("");
+    });
+  });
+
+  // ── isValidAddress ───────────────────────────────────────────────────────────
   describe("isValidAddress", () => {
     it("should return true for valid checksummed addresses", () => {
       // Vitalik's address correctly checksummed

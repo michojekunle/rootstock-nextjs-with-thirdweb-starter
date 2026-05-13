@@ -33,7 +33,7 @@ export function validateEnvironment(): EnvValidationResult {
     errors.push(
       'NEXT_PUBLIC_DEFAULT_NETWORK is not set. Use "rootstock-mainnet" or "rootstock-testnet"'
     );
-  } else if (!["rootstock-mainnet", "rootstock-testnet"].includes(defaultNetwork)) {
+  } else if (!["rootstock-mainnet", "mainnet", "rootstock-testnet", "testnet"].includes(defaultNetwork)) {
     warnings.push(
       `NEXT_PUBLIC_DEFAULT_NETWORK is "${defaultNetwork}". Expected "rootstock-mainnet" or "rootstock-testnet"`
     );

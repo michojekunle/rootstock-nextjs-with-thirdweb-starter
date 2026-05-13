@@ -28,6 +28,34 @@ export function formatTokenAmount(raw: string, decimals: number): string {
 }
 
 /**
+ * Parse a human-readable token amount string into its on-chain BigInt representation.
+ *
+ * Uses BigInt multiplication throughout — never routes `10 ** decimals` through a JS
+ * Number, which would lose precision for decimals > 22 (IEEE 754 doubles are exact for
+ * powers of 10 only up to 10^22).  All ERC-20 tokens use ≤ 18 decimals, but this
+ * function is correct for any decimal count.
+ */
+export function parseTokenAmount(amount: string, decimals: number): bigint {
+  const [intPart, fracPart = ""] = amount.split(".")
+  const paddedFrac = fracPart.padEnd(decimals, "0").slice(0, decimals)
+  let multiplier = BigInt(1)
+  for (let i = 0; i < decimals; i++) multiplier *= BigInt(10)
+  return BigInt(intPart) * multiplier + BigInt(paddedFrac || "0")
+}
+
+/**
+ * Sanitize a value returned from a smart contract for safe UI display.
+ *
+ * React already escapes JSX text content (no XSS risk), but a malicious contract
+ * can return an arbitrarily long string that breaks layout.  This caps the value
+ * and guarantees a string type regardless of what the RPC returned.
+ */
+export function sanitizeContractString(value: unknown, maxLength = 100): string {
+  if (typeof value !== "string") return ""
+  return value.trim().slice(0, maxLength)
+}
+
+/**
  * Validate an EVM address using EIP-55 checksum validation via thirdweb's getAddress.
  *
  * Why not regex?  A regex like /^0x[a-fA-F0-9]{40}$/ passes structurally-valid
