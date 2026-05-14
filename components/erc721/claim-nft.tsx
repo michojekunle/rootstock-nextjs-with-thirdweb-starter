@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,13 @@ import { client } from "@/lib/thirdweb";
 import {
   getContract,
   prepareContractCall,
+  readContract,
   sendAndConfirmTransaction,
 } from "thirdweb";
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MAX_NFT_CLAIM_QUANTITY } from "@/lib/constants";
+import { MAX_NFT_CLAIM_QUANTITY, MAX_NFT_PER_WALLET } from "@/lib/constants";
 
 
 /** Native/gas token placeholder used by Thirdweb's claim conditions (EIP-7528) */
@@ -49,6 +50,37 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
     defaultValues: { quantity: "1" },
   });
   const [error, setError] = useState<string | null>(null);
+  const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+
+  // Fetch current balance to enforce the "max 10" limit
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBalance = async () => {
+      if (!contractAddress || !userAddress) return;
+      try {
+        setIsCheckingBalance(true);
+        const chain = getActiveChain();
+        const contract = getContract({ client, address: contractAddress, chain });
+        const balance = await readContract({
+          contract,
+          method: "function balanceOf(address account) view returns (uint256)",
+          params: [userAddress],
+        });
+        if (!cancelled) setCurrentBalance(Number(balance));
+      } catch (err) {
+        console.error("Failed to fetch NFT balance:", err);
+      } finally {
+        if (!cancelled) setIsCheckingBalance(false);
+      }
+    };
+
+    fetchBalance();
+    return () => { cancelled = true; };
+  }, [contractAddress, userAddress]);
+
+  const maxAllowedToClaim = currentBalance !== null ? Math.max(0, MAX_NFT_PER_WALLET - currentBalance) : MAX_NFT_PER_WALLET;
+  const isAtLimit = currentBalance !== null && currentBalance >= MAX_NFT_PER_WALLET;
 
   const onSubmit = async (data: ClaimForm) => {
     if (!account) {
@@ -110,31 +142,48 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
 
       <div className="space-y-2">
         <Label htmlFor="claim-quantity">Quantity to Claim</Label>
-        {/* Fix #3: aria-describedby links input to its error node */}
-        <Input
-          id="claim-quantity"
-          type="number"
-          min="1"
-          max={MAX_NFT_CLAIM_QUANTITY}
-          aria-describedby="claim-quantity-error"
-          aria-invalid={!!errors.quantity}
-          {...register("quantity", {
-            required: "Quantity is required",
-            min: {
-              value: 1,
-              message: "Minimum quantity is 1",
-            },
-            max: {
-              // Fix #4: use named constant instead of magic number
-              value: MAX_NFT_CLAIM_QUANTITY,
-              message: `Maximum quantity is ${MAX_NFT_CLAIM_QUANTITY}`,
-            },
-          })}
-        />
-        {errors.quantity && (
-          <p id="claim-quantity-error" role="alert" className="text-xs text-destructive">
-            {errors.quantity.message}
-          </p>
+        {isAtLimit ? (
+          <Alert className="bg-muted/50 border-dashed">
+            <AlertDescription className="text-xs">
+              You already own <span className="font-bold text-foreground">{currentBalance}</span> NFT(s).
+              The maximum allowed per wallet is <span className="font-bold text-foreground">{MAX_NFT_PER_WALLET}</span>.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <Input
+              id="claim-quantity"
+              type="number"
+              min="1"
+              max={Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToClaim)}
+              disabled={isCheckingBalance}
+              aria-describedby="claim-quantity-error"
+              aria-invalid={!!errors.quantity}
+              {...register("quantity", {
+                required: "Quantity is required",
+                min: {
+                  value: 1,
+                  message: "Minimum quantity is 1",
+                },
+                max: {
+                  value: Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToClaim),
+                  message: currentBalance !== null && currentBalance > 0
+                    ? `You can only claim ${maxAllowedToClaim} more (limit ${MAX_NFT_PER_WALLET})`
+                    : `Maximum quantity is ${MAX_NFT_CLAIM_QUANTITY}`,
+                },
+              })}
+            />
+            {errors.quantity && (
+              <p id="claim-quantity-error" role="alert" className="text-xs text-destructive">
+                {errors.quantity.message}
+              </p>
+            )}
+            {currentBalance !== null && !isAtLimit && (
+              <p className="text-[10px] text-muted-foreground italic">
+                You own {currentBalance} NFT(s). Remaining allowance: {maxAllowedToClaim}.
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -144,8 +193,9 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
         errorMessage="Claim failed"
         className="w-full"
         aria-label="Claim NFT"
+        disabled={isAtLimit || isCheckingBalance}
       >
-        Claim NFT
+        {isCheckingBalance ? "Checking limit..." : isAtLimit ? `Limit reached (${MAX_NFT_PER_WALLET}/${MAX_NFT_PER_WALLET})` : "Claim NFT"}
       </TransactionButton>
     </form>
   );

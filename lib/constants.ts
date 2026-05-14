@@ -36,9 +36,12 @@ export const MIN_TOKEN_QUANTITY = 0.1;
 export const MAX_MINT_QUANTITY = 1_000_000;
 
 /**
- * Maximum NFT quantity claimable in a single transaction.
+ * Maximum NFT quantity claimable in a single transaction (UI validation only).
+ * The hard limit is ultimately enforced by the contract's active claim condition.
  */
 export const MAX_NFT_CLAIM_QUANTITY = 10;
+/** Maximum NFTs a single wallet can own from this collection (UI enforced) */
+export const MAX_NFT_PER_WALLET = 10;
 
 /**
  * Maximum token quantity per single transfer transaction.
