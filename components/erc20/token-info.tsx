@@ -17,6 +17,8 @@ interface TokenInfoProps {
   refreshKey?: number
   /** Optimistic supply delta — human-readable amount freshly minted, added immediately */
   optimisticSupplyDelta?: string | null
+  /** Called once the re-fetch triggered by refreshKey completes */
+  onRefreshed?: () => void
 }
 
 interface TokenData {
@@ -30,6 +32,7 @@ export function TokenInfo({
   contractAddress,
   refreshKey = 0,
   optimisticSupplyDelta,
+  onRefreshed,
 }: TokenInfoProps) {
   const [tokenData, setTokenData] = useState<TokenData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -92,6 +95,7 @@ export function TokenInfo({
           setLoading(false)
           setIsRefreshing(false)
           isFirstMount.current = false
+          onRefreshed?.()
         }
       }
     }

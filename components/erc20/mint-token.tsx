@@ -14,7 +14,10 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { claimTo } from "thirdweb/extensions/erc20";
+// mintTo calls the standard mint(address,uint256) and requires MINTER_ROLE.
+// claimTo (Token Drop) was removed because it reads claim conditions, which
+// can fail with "!Tokens" when the condition's currency is misconfigured.
+import { mintTo } from "thirdweb/extensions/erc20";
 import { MIN_TOKEN_QUANTITY, MAX_MINT_QUANTITY } from "@/lib/constants";
 
 interface MintForm {
@@ -55,10 +58,10 @@ export function MintToken({ contractAddress, onSuccess }: MintTokenProps) {
         chain: activeChain,
       });
 
-      const transaction = claimTo({
+      const transaction = mintTo({
         contract,
         to: account.address,
-        quantity: data.amount,
+        amount: data.amount,
       });
 
       await sendAndConfirmTransaction({

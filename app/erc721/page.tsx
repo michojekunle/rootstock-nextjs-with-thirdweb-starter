@@ -72,15 +72,24 @@ export default function ERC721Page() {
 
   // Optimistic-UI state ──────────────────────────────────────────────────────
   const [refreshKey, setRefreshKey] = useState(0)
+  // Kept separate so each component clears its own delta when its re-fetch lands,
+  // preventing the doubled-value race where one component finishes before the other.
+  const [optimisticMintedDelta, setOptimisticMintedDelta] = useState<number | null>(null)
   const [pendingClaimCount, setPendingClaimCount] = useState(0)
 
-  /** Claim confirmed: show N placeholder cards immediately, trigger background re-fetch */
+  /** Claim confirmed: show optimistic counts immediately, trigger background re-fetches */
   const handleClaimSuccess = useCallback((quantity: number) => {
+    setOptimisticMintedDelta(quantity)
     setPendingClaimCount(quantity)
     setRefreshKey((k) => k + 1)
   }, [])
 
-  /** YourNFTs finished its background re-fetch — clear the pending placeholders */
+  /** NFTDropInfo finished its re-fetch — total minted is now from the chain, clear the delta */
+  const handleDropInfoRefreshed = useCallback(() => {
+    setOptimisticMintedDelta(null)
+  }, [])
+
+  /** YourNFTs finished its re-fetch — real cards are loaded, clear the placeholders */
   const handleNFTsRefreshed = useCallback(() => {
     setPendingClaimCount(0)
   }, [])
@@ -146,7 +155,8 @@ export default function ERC721Page() {
         <NFTDropInfo
           contractAddress={CONTRACT_ADDRESSES.NFT_DROP}
           refreshKey={refreshKey}
-          optimisticMintedDelta={pendingClaimCount > 0 ? pendingClaimCount : null}
+          optimisticMintedDelta={optimisticMintedDelta}
+          onRefreshed={handleDropInfoRefreshed}
         />
       </div>
 

@@ -95,10 +95,14 @@ export default function ERC20Page() {
     setRefreshKey((k) => k + 1)
   }, [])
 
-  /** TokenBalance finished its background re-fetch — clear the pending delta */
+  /** TokenInfo finished its re-fetch — its displayed supply is now from the chain, clear the delta */
+  const handleTokenInfoRefreshed = useCallback(() => {
+    setOptimisticSupplyDelta(null)
+  }, [])
+
+  /** TokenBalance finished its re-fetch — its displayed balance is now from the chain, clear the delta */
   const handleBalanceRefreshed = useCallback(() => {
     setOptimisticDelta(null)
-    setOptimisticSupplyDelta(null)
   }, [])
 
   if (!account) {
@@ -163,6 +167,7 @@ export default function ERC20Page() {
           contractAddress={CONTRACT_ADDRESSES.ERC20}
           refreshKey={refreshKey}
           optimisticSupplyDelta={optimisticSupplyDelta}
+          onRefreshed={handleTokenInfoRefreshed}
         />
         <TokenBalance
           contractAddress={CONTRACT_ADDRESSES.ERC20}
