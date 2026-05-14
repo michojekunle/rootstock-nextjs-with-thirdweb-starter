@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "setup:nft": "tsx scripts/setup-nft-metadata.ts"
+    "setup:nft": "tsx scripts/setup-nft-metadata.ts",
+    "check:nft": "tsx scripts/check-nft.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
