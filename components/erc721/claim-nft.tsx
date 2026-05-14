@@ -16,7 +16,9 @@ import {
 import { getActiveChain } from "@/lib/chains";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MAX_NFT_CLAIM_QUANTITY, MAX_NFT_PER_WALLET } from "@/lib/constants";
+import { MAX_NFT_CLAIM_QUANTITY } from "@/lib/constants";
+
+const DAILY_LIMIT = 1000;
 
 
 /** Native/gas token placeholder used by Thirdweb's claim conditions (EIP-7528) */
@@ -47,40 +49,29 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
     formState: { errors },
     reset,
   } = useForm<ClaimForm>({
-    defaultValues: { quantity: "1" },
+    defaultValues: { quantity: "250" },
   });
   const [error, setError] = useState<string | null>(null);
-  const [currentBalance, setCurrentBalance] = useState<number | null>(null);
-  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const [dailyClaimed, setDailyClaimed] = useState(0);
 
-  // Fetch current balance to enforce the "max 10" limit
+  // Fetch daily claimed amount from LocalStorage
   useEffect(() => {
-    let cancelled = false;
-    const fetchBalance = async () => {
-      if (!contractAddress || !userAddress) return;
-      try {
-        setIsCheckingBalance(true);
-        const chain = getActiveChain();
-        const contract = getContract({ client, address: contractAddress, chain });
-        const balance = await readContract({
-          contract,
-          method: "function balanceOf(address account) view returns (uint256)",
-          params: [userAddress],
-        });
-        if (!cancelled) setCurrentBalance(Number(balance));
-      } catch (err) {
-        console.error("Failed to fetch NFT balance:", err);
-      } finally {
-        if (!cancelled) setIsCheckingBalance(false);
+    if (!userAddress || !contractAddress) return;
+    const storageKey = `claim_limit_${userAddress}_${contractAddress}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      const { count, date } = JSON.parse(stored);
+      const today = new Date().toISOString().split("T")[0];
+      if (date === today) {
+        setDailyClaimed(count);
+      } else {
+        setDailyClaimed(0);
       }
-    };
+    }
+  }, [userAddress, contractAddress]);
 
-    fetchBalance();
-    return () => { cancelled = true; };
-  }, [contractAddress, userAddress]);
-
-  const maxAllowedToClaim = currentBalance !== null ? Math.max(0, MAX_NFT_PER_WALLET - currentBalance) : MAX_NFT_PER_WALLET;
-  const isAtLimit = currentBalance !== null && currentBalance >= MAX_NFT_PER_WALLET;
+  const maxAllowedToday = Math.max(0, DAILY_LIMIT - dailyClaimed);
+  const isAtDailyLimit = dailyClaimed >= DAILY_LIMIT;
 
   const onSubmit = async (data: ClaimForm) => {
     if (!account) {
@@ -125,6 +116,13 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
 
       reset();
       onSuccess?.(Number(data.quantity));
+
+      // Update daily limit in LocalStorage
+      const storageKey = `claim_limit_${userAddress}_${contractAddress}`;
+      const newCount = dailyClaimed + Number(data.quantity);
+      const today = new Date().toISOString().split("T")[0];
+      localStorage.setItem(storageKey, JSON.stringify({ count: newCount, date: today }));
+      setDailyClaimed(newCount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Claim failed");
     }
@@ -142,11 +140,11 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
 
       <div className="space-y-2">
         <Label htmlFor="claim-quantity">Quantity to Claim</Label>
-        {isAtLimit ? (
+        {isAtDailyLimit ? (
           <Alert className="bg-muted/50 border-dashed">
             <AlertDescription className="text-xs">
-              You already own <span className="font-bold text-foreground">{currentBalance}</span> NFT(s).
-              The maximum allowed per wallet is <span className="font-bold text-foreground">{MAX_NFT_PER_WALLET}</span>.
+              You have reached your daily limit of <span className="font-bold text-foreground">{DAILY_LIMIT}</span> NFT claims. 
+              Please come back tomorrow!
             </AlertDescription>
           </Alert>
         ) : (
@@ -155,8 +153,7 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
               id="claim-quantity"
               type="number"
               min="1"
-              max={Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToClaim)}
-              disabled={isCheckingBalance}
+              max={Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToday)}
               aria-describedby="claim-quantity-error"
               aria-invalid={!!errors.quantity}
               {...register("quantity", {
@@ -166,9 +163,9 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
                   message: "Minimum quantity is 1",
                 },
                 max: {
-                  value: Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToClaim),
-                  message: currentBalance !== null && currentBalance > 0
-                    ? `You can only claim ${maxAllowedToClaim} more (limit ${MAX_NFT_PER_WALLET})`
+                  value: Math.min(MAX_NFT_CLAIM_QUANTITY, maxAllowedToday),
+                  message: dailyClaimed > 0
+                    ? `You can only claim ${maxAllowedToday} more today`
                     : `Maximum quantity is ${MAX_NFT_CLAIM_QUANTITY}`,
                 },
               })}
@@ -178,11 +175,9 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
                 {errors.quantity.message}
               </p>
             )}
-            {currentBalance !== null && !isAtLimit && (
-              <p className="text-[10px] text-muted-foreground italic">
-                You own {currentBalance} NFT(s). Remaining allowance: {maxAllowedToClaim}.
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground italic">
+              Daily limit: {DAILY_LIMIT}. Remaining today: {maxAllowedToday}.
+            </p>
           </>
         )}
       </div>
@@ -193,9 +188,9 @@ export function ClaimNFT({ contractAddress, userAddress, onSuccess }: ClaimNFTPr
         errorMessage="Claim failed"
         className="w-full"
         aria-label="Claim NFT"
-        disabled={isAtLimit || isCheckingBalance}
+        disabled={isAtDailyLimit}
       >
-        {isCheckingBalance ? "Checking limit..." : isAtLimit ? `Limit reached (${MAX_NFT_PER_WALLET}/${MAX_NFT_PER_WALLET})` : "Claim NFT"}
+        {isAtDailyLimit ? `Daily Limit Reached (${DAILY_LIMIT}/${DAILY_LIMIT})` : "Claim NFT"}
       </TransactionButton>
     </form>
   );

@@ -7,7 +7,8 @@ import { LoadingCard } from "@/components/dapp/loading-card"
 import { ErrorState } from "@/components/dapp/error-state"
 import { Spinner } from "@/components/ui/spinner"
 import { client } from "@/lib/thirdweb"
-import { getContract, readContract, type ThirdwebContract } from "thirdweb"
+import { getContract, readContract, getContractEvents, type ThirdwebContract } from "thirdweb"
+import { getOwnedNFTs, transferEvent } from "thirdweb/extensions/erc721"
 import { getActiveChain } from "@/lib/chains"
 import { ImageIcon, RefreshCw } from "lucide-react"
 
@@ -165,37 +166,83 @@ async function fetchNFTPage(
 ): Promise<{ nfts: NFT[]; usedEnumerable: boolean }> {
   let tokenIds: bigint[]
 
-  if (useEnumerable) {
+  try {
+    const promises: Promise<bigint>[] = []
+    for (let k = 0; k < count; k++) {
+      const ownerIndex = totalBalance - 1 - (pageOffset + k)
+      promises.push(
+        readContract({
+          contract,
+          method: "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+          params: [userAddress, BigInt(ownerIndex)],
+        }).then((id) => BigInt(id))
+      )
+    }
+    tokenIds = await Promise.all(promises)
+    if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Found IDs via Enumerable:", tokenIds)
+  } catch {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[YourNFTs] Enumerable not supported, trying Indexer...")
+    }
+
+    // Fallback 1: Thirdweb Indexer
     try {
-      const promises: Promise<bigint>[] = []
-      for (let k = 0; k < count; k++) {
-        // Reverse: highest owner index = most recently acquired
-        const ownerIndex = totalBalance - 1 - (pageOffset + k)
-        promises.push(
-          readContract({
-            contract,
-            method:
-              "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-            params: [userAddress, BigInt(ownerIndex)],
-          }).then((id) => BigInt(id))
-        )
+      const owned = await getOwnedNFTs({
+        contract,
+        address: userAddress,
+        start: pageOffset,
+        count,
+      })
+      if (owned && owned.length > 0) {
+        if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Found IDs via Indexer")
+        return {
+          nfts: owned.map(o => ({
+            tokenId: String(o.tokenId),
+            uri: o.tokenURI,
+            metadata: o.metadata
+          })),
+          usedEnumerable: false
+        }
       }
-      tokenIds = await Promise.all(promises)
-    } catch {
-      // Contract doesn't support ERC721Enumerable — fall back to sequential IDs
-      // counted down from (totalBalance - 1) so newest still appears first.
+    } catch (err) {
       if (process.env.NODE_ENV === "development") {
-        console.warn("[YourNFTs] ERC721Enumerable not supported, using sequential indices")
+        console.debug("[YourNFTs] Indexer not available:", err)
+      }
+    }
+
+    // Fallback 2: RPC Logs (Transfer events)
+    try {
+      if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Trying RPC events...")
+      const events = await getContractEvents({
+        contract,
+        events: [transferEvent()],
+        filters: { to: userAddress },
+        fromBlock: 0n,
+      })
+
+      if (events && events.length > 0) {
+        // Extract unique token IDs and sort newest first
+        const allOwnedIds = Array.from(new Set(events.map(e => e.args.tokenId))).reverse()
+        tokenIds = allOwnedIds.slice(pageOffset, pageOffset + count)
+        if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Found IDs via Events:", tokenIds)
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[YourNFTs] Event discovery failed (likely RPC range limit):", err)
+      }
+    }
+
+    // Fallback 3: Sequential Guess (Last resort)
+    if (!tokenIds || tokenIds.length === 0) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[YourNFTs] All discovery methods failed, using sequential fallback")
       }
       tokenIds = Array.from({ length: count }, (_, k) =>
         BigInt(Math.max(0, totalBalance - 1 - (pageOffset + k)))
       )
-      useEnumerable = false
     }
-  } else {
-    tokenIds = Array.from({ length: count }, (_, k) =>
-      BigInt(Math.max(0, totalBalance - 1 - (pageOffset + k)))
-    )
+
+    useEnumerable = false
   }
 
   // Batch-fetch all tokenURIs in parallel
