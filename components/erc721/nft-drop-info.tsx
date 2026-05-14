@@ -17,6 +17,8 @@ interface NFTDropInfoProps {
   refreshKey?: number
   /** Optimistic count to add to totalMinted while the re-fetch is in-flight */
   optimisticMintedDelta?: number | null
+  /** Called once the re-fetch triggered by refreshKey completes */
+  onRefreshed?: () => void
 }
 
 interface DropData {
@@ -61,6 +63,7 @@ export function NFTDropInfo({
   contractAddress,
   refreshKey = 0,
   optimisticMintedDelta,
+  onRefreshed,
 }: NFTDropInfoProps) {
   const [dropData, setDropData] = useState<DropData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -122,6 +125,7 @@ export function NFTDropInfo({
           setLoading(false)
           setIsRefreshing(false)
           isFirstMount.current = false
+          onRefreshed?.()
         }
       }
     }
