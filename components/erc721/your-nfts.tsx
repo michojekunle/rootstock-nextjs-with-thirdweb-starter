@@ -164,7 +164,7 @@ async function fetchNFTPage(
   useEnumerable: boolean,
   totalBalance: number,
 ): Promise<{ nfts: NFT[]; usedEnumerable: boolean }> {
-  let tokenIds: bigint[]
+  let tokenIds: bigint[] = []
 
   try {
     const promises: Promise<bigint>[] = []
@@ -186,25 +186,25 @@ async function fetchNFTPage(
     }
 
     // Fallback 1: Thirdweb Indexer
-    try {
-      const owned = await getOwnedNFTs({
-        contract,
-        address: userAddress,
-        start: pageOffset,
-        count,
-      })
-      if (owned && owned.length > 0) {
-        if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Found IDs via Indexer")
-        return {
-          nfts: owned.map(o => ({
-            tokenId: String(o.tokenId),
-            uri: o.tokenURI,
-            metadata: o.metadata
-          })),
-          usedEnumerable: false
+      try {
+        const owned = await getOwnedNFTs({
+          contract,
+          owner: userAddress,
+        })
+        if (owned && owned.length > 0) {
+          // Manual pagination since getOwnedNFTs doesn't support it in this SDK version
+          const paged = owned.slice(pageOffset, pageOffset + count)
+          if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Found IDs via Indexer")
+          return {
+            nfts: paged.map(o => ({
+              tokenId: String(o.id),
+              uri: o.tokenURI,
+              metadata: o.metadata
+            })),
+            usedEnumerable: false
+          }
         }
-      }
-    } catch (err) {
+      } catch (err) {
       if (process.env.NODE_ENV === "development") {
         console.debug("[YourNFTs] Indexer not available:", err)
       }
@@ -215,8 +215,7 @@ async function fetchNFTPage(
       if (process.env.NODE_ENV === "development") console.debug("[YourNFTs] Trying RPC events...")
       const events = await getContractEvents({
         contract,
-        events: [transferEvent()],
-        filters: { to: userAddress },
+        events: [transferEvent({ to: userAddress })],
         fromBlock: 0n,
       })
 
